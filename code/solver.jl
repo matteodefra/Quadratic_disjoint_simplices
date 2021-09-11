@@ -221,17 +221,17 @@ println("Dual function value:$(lagrangian_relaxation(solver,solver.x, solver.lam
 
 #=
     Solve the problem of 
-        x_t = \argmin_{x \in X} \{ x^T * Q * x + q * x - \lambda_{t-1} * x \}
+        x_t = \argmin_{x \in X} \{ x^T * Q * x + q * x - λ_{t-1} * x \}
     where X is the constraint set of the disjoint simplices (eliding non negativity 
     constraint, since it's included in the relaxation).
     Being only linear constraint, this problem can be easily solved in O(n) time,
     using the QR factorization of Q through backsubstitution
 
     Backward substitution is implemented to solve the linear system
-        R [x, \mu] = Q^T [\lambda_t - q, b]
+        R [x, μ] = Q^T [λ_t - q, b]
     using the QR factorization of the KKT condition matrix.
 
-    Returns a tuple with the value x and \mu
+    Returns a tuple with the value x and μ
 =#
 function solve_lagrangian_relaxation(solver)
 
@@ -260,6 +260,57 @@ function solve_lagrangian_relaxation(solver)
     # print("\n\n")
     
     return x_mu[1:solver.n], x_mu[solver.n + 1 : dim]
+end
+
+
+#= 
+
+    Compute one among the three possible update_rule specified in the report.
+    
+    The first update rule is a general update rule given by:
+
+        λ_t = λ_{t-1} + η \diag(G_t)^{-1/2} g_t
+
+    where G_t is the full outer product of all the stored subgradient
+
+    The second update rule is:
+
+        λ_t = - H_{t-1}^{-1} t η g_t 
+
+    The third one employ the following:
+
+        λ_t = λ_{t-1} + H_{t-1}^{-1} \[ Ψ_t(λ_t) - η g_t \]
+
+=#
+function compute_update_rule(solver, update_rule)
+    
+    if update_rule == 1
+        # full outer product of gradients
+        G_t = Matrix{Float64}(undef, solver.n, solver.n)
+        for col in eachcol(solver.grads)
+
+            println("Subgrad column:")
+            display(col)
+            print("\n\n")
+
+            G_t += col .* col'
+        end
+
+        println("Full outer product of subgradient:")
+        display(G_t)
+        print("\n\n")
+
+        G_t = Diagonal(G_t)^(-0.5)
+
+        lambda = solver.lambda + solver.eta * G_t * solver.grads[:,end]
+
+        return lambda
+    elseif update_rule == 2
+        return 0
+    else
+        return 0
+    end
+
 end
 
 
@@ -335,7 +386,11 @@ function my_ADAGRAD(solver, update_rule)
         Compute the update rule for the lagrangian multipliers lambda: can use 
         one among the three showed, then soft threshold the result
         =#
-        
+        res = compute_update_rule(solver ,update_rule)
+
+        println("Updated value of lambda:")
+        display(res)
+        print("\n\n")
 
 
         iter += 1

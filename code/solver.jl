@@ -1,3 +1,4 @@
+using Convex, SCS
 using Random
 using LinearAlgebra
 using AutoGrad
@@ -100,11 +101,12 @@ eta = 1
 delta = rand()
 
 # Initialize max_iter
-max_iter = 5
+max_iter = 20
 
 # Create struct solver to approach the problem
 mutable struct Solver
     n :: Int
+    iteration :: Int
     lambda :: Array{Float64}
     previous_lambda :: Array{Float64}
     K :: Int
@@ -127,6 +129,8 @@ end
 solver = Solver()
 
 solver.n = n
+
+solver.iteration = 0
 
 solver.lambda = lambda
 
@@ -235,7 +239,7 @@ println("Dual function value:$(lagrangian_relaxation(solver,solver.x, solver.lam
 =#
 function solve_lagrangian_relaxation(solver)
 
-    # Create vector [\lambda_{t-1} - q, b]
+    # Create vector [λ_{t-1} - q, b]
     b = ones((solver.K,1))
 
     b = vcat(solver.lambda .- solver.q, b)
@@ -282,34 +286,51 @@ end
         λ_t = λ_{t-1} + H_{t-1}^{-1} \[ Ψ_t(λ_t) - η g_t \]
 
 =#
-function compute_update_rule(solver, update_rule)
+function compute_update_rule(solver, update_rule, H_t, Psi)
+
+    local lambda
     
     if update_rule == 1
+
         # full outer product of gradients
         G_t = Matrix{Float64}(undef, solver.n, solver.n)
         for col in eachcol(solver.grads)
 
-            println("Subgrad column:")
-            display(col)
-            print("\n\n")
+            G_t .+= col .* col'
 
-            G_t += col .* col'
         end
-
-        println("Full outer product of subgradient:")
-        display(G_t)
-        print("\n\n")
 
         G_t = Diagonal(G_t)^(-0.5)
 
+        println("Diagonal full outer product of subgradient:")
+        display(G_t)
+        print("\n\n")
+
         lambda = solver.lambda + solver.eta * G_t * solver.grads[:,end]
 
-        return lambda
     elseif update_rule == 2
-        return 0
+
+        # Average of gradients
+
+        means_vector = ones((n,1))
+
+        avg_gradient = mean!(means_vector,solver.grads)
+
+        println("Average subgradients:")
+        display(avg_gradient)        
+        print("\n\n")
+
+        lambda = - H_t^(-1) .* solver.iteration .* solver.eta .* avg_gradient
+
     else
-        return 0
+        
+        lambda = solver.lambda .+ H_t^(-1) .* ( Psi .- solver.eta .* solver.grads[:,end] )
+
     end
+
+    lambda = max.(0, lambda)
+
+    return lambda
 
 end
 
@@ -317,7 +338,7 @@ end
 # Loop function which implements customized ADAGRAD algorithm
 function my_ADAGRAD(solver, update_rule)
 
-    iter = 0
+    iter = 1
 
     while iter < solver.max_iter #&& check_condition(solver.previous_lambda, solver.lambda)
        
@@ -349,16 +370,16 @@ function my_ADAGRAD(solver, update_rule)
 
         # Create diagonal matrix H_t
         # Create diagonal matrix starting from s_t 
-        mat = diagm(s_t)
+        mat = Diagonal(s_t)
 
         # Construct Identity matrix
-        Iden = Matrix{Float64}(I, solver.n, solver.n)
+        # Iden = Matrix{Float64}(I, solver.n, solver.n)
+        Iden = Diagonal(ones(solver.n,solver.n))
 
         delta_Id = solver.delta .* Iden
 
         # Sum them (hessian approximation)
         H_t = delta_Id + mat
-
 
         #= 
         Proximal term computation: dot(x,A,y) faster way of computing 
@@ -367,39 +388,68 @@ function my_ADAGRAD(solver, update_rule)
         =#   
         Psi = 0.5 .* dot(previous_lambda, H_t, previous_lambda)
 
-        println("Psi value:")
-        display(Psi)
-        print("\n\n")
-
         solver.x, mu = solve_lagrangian_relaxation(solver)
 
         println("x value:")
         display(solver.x)
         print("\n\n")
 
-        println("mu value:")
-        display(mu)
-        print("\n\n")
-
-
         #=
         Compute the update rule for the lagrangian multipliers lambda: can use 
         one among the three showed, then soft threshold the result
         =#
-        res = compute_update_rule(solver ,update_rule)
+        solver.lambda = compute_update_rule(solver ,update_rule, H_t, Psi)
+
 
         println("Updated value of lambda:")
-        display(res)
+        display(solver.lambda)
         print("\n\n")
 
 
         iter += 1
 
+        solver.iteration = iter
+        solver.eta = 1 / solver.iteration
+
     end
 
-    return 0
+    return solver.x, solver.lambda
 
 end
 
 
-val = my_ADAGRAD(solver, 1)
+optimal_x, optimal_lambda = my_ADAGRAD(solver, 1)
+
+println("Optimal x found:")
+display(optimal_x)
+print("\n\n")
+
+println("Optimal lambda found:")
+display(optimal_lambda)
+print("\n\n")
+
+optimal_primal = primal_function(solver, optimal_x)
+
+optimal_dual = lagrangian_relaxation(solver, optimal_x, optimal_lambda)
+
+println("Value of the primal function:")
+display(optimal_primal)
+print("\n\n")
+
+println("Value of the lagrangian function:")
+display(optimal_dual)
+print("\n\n\n\n\n\n")
+
+println("Comparing with Convex.jl solution")
+
+x = Variable(n)
+
+problem = minimize(quadform(x, Q) + dot(q, x), [ solver.A[1,:] .* x = 1, solver.A[2,:] .* x = 1 , solver.A[3,:] .* x = 1, x >= 0 ])
+
+println(problem)
+
+solve!(problem, () -> SCS.Optimizer(verbose=true), verbose=false)
+
+println("problem status is ", problem.status) # :Optimal, :Infeasible, :Unbounded etc.
+println("optimal value is ", problem.optval)
+

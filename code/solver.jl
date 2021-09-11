@@ -86,9 +86,6 @@ println("Q matrix:")
 display(Q)
 print("\n\n")
 
-# Get QR factorization of Q
-Q_hat, R_hat = qr(Q)
-
 # Initialize also random q vector 
 q = randn(Float64, (n,1))
 
@@ -116,6 +113,7 @@ mutable struct Solver
     previous_x :: Array{Float64}
     grads :: Array{Float64}#Vector{Array{Int64}}
     Q :: Matrix{Float64}
+    Full_mat :: Matrix{Float64}
     Q_hat :: Matrix{Float64}
     R_hat :: Matrix{Float64}
     q :: Array{Float64}
@@ -142,10 +140,6 @@ solver.grads = Array{Float64}(undef,n,0)
 
 solver.Q = Q
 
-solver.Q_hat = Q_hat
-
-solver.R_hat = R_hat
-
 solver.q = q
 
 solver.eta = eta
@@ -155,6 +149,19 @@ solver.delta = delta
 solver.max_iter = max_iter
 
 # println("Solver struct:\n$solver")
+
+
+function construct_full_matrix(solver)
+    Full_mat = vcat(solver.Q, solver.A)
+    
+    zero_mat = zeros((solver.K, solver.K))
+
+    Right_side = vcat(solver.A', zero_mat)
+
+    Full_mat = hcat(Full_mat, Right_side)
+
+    return Full_mat
+end
 
 
 # Helper function to construct the matrix A
@@ -178,12 +185,32 @@ println("A constraint matrix:")
 display(solver.A)
 print("\n\n")
 
+
+#= 
+Create matrix of KKT conditions
+    Q A^T
+    A 0
+to solve the lagrangian_relaxation
+=#
+solver.Full_mat = construct_full_matrix(solver)
+
+println("Full matrix:")
+display(solver.Full_mat)
+print("\n\n")
+
+# Compute QR factorization of Full_mat
+Q_hat, R_hat = qr!(solver.Full_mat)
+
+solver.Q_hat = Q_hat
+solver.R_hat = R_hat
+
+
 function primal_function(solver, actual_x)
-    return actual_x' * solver.Q * actual_x + solver.q' * x
+    return actual_x' * solver.Q * actual_x .+ solver.q' * x
 end
 
 function lagrangian_relaxation(solver, previous_x, previous_lambda)
-    return previous_x' * solver.Q * previous_x + solver.q' * previous_x - previous_lambda' * previous_x
+    return previous_x' * solver.Q * previous_x .+ solver.q' * previous_x .- previous_lambda' * previous_x
 end
 
 
@@ -191,20 +218,49 @@ println("Primal function value:$(primal_function(solver,solver.x))")
 
 println("Dual function value:$(lagrangian_relaxation(solver,solver.x, solver.lambda))")
 
-# println("Params: $x_params")
-# println("Params: $lambda_params")
 
-# # Compute derivative of lagrangian_relaxation w.r.t. to lambda using AutoGrad
-# g = @diff sum([x_params' * Q * x_params, q' * x_params, - lambda_params' * x_params])
+#=
+    Solve the problem of 
+        x_t = \argmin_{x \in X} \{ x^T * Q * x + q * x - \lambda_{t-1} * x \}
+    where X is the constraint set of the disjoint simplices (eliding non negativity 
+    constraint, since it's included in the relaxation).
+    Being only linear constraint, this problem can be easily solved in O(n) time,
+    using the QR factorization of Q through backsubstitution
 
-# println("Overall gradient: $g")
+    Backward substitution is implemented to solve the linear system
+        R [x, \mu] = Q^T [\lambda_t - q, b]
+    using the QR factorization of the KKT condition matrix.
 
-# val = grad(g, lambda_params)
+    Returns a tuple with the value x and \mu
+=#
+function solve_lagrangian_relaxation(solver)
 
-# println("Gradient w.r.t. lambda: $val")
+    # Create vector [\lambda_{t-1} - q, b]
+    b = ones((solver.K,1))
 
-# Inline function for squaring number
-square(n) = n * n 
+    b = vcat(solver.lambda .- solver.q, b)
+
+    b = solver.Q_hat' .* b
+
+    R_hat = solver.R_hat
+
+    # First compute Q^t * known vector (O(n^2) float ops) 
+
+    dim = solver.n + solver.K
+
+    x_mu = zeros((dim,1))
+    x_mu[dim] = b[dim]/R_hat[dim, dim]
+    for i = dim-1:-1:1
+        s = sum( R_hat[i,j]*x_mu[j] for j=i+1:dim )
+        x_mu[i] = ( b[i] - s ) / R_hat[i,i]
+    end
+
+    # println("x_mu vector:")
+    # display(x_mu)
+    # print("\n\n")
+    
+    return x_mu[1:solver.n], x_mu[solver.n + 1 : dim]
+end
 
 
 # Loop function which implements customized ADAGRAD algorithm
@@ -212,9 +268,12 @@ function my_ADAGRAD(solver)
 
     iter = 0
 
-    previous_x = solver.x
-
     while iter < solver.max_iter #&& check_condition(solver.previous_lambda, solver.lambda)
+       
+        previous_x = solver.x
+
+        previous_lambda = solver.lambda
+        
         # Compute function value
         f_val = primal_function(solver, previous_x)
 
@@ -230,46 +289,52 @@ function my_ADAGRAD(solver)
         for (i,row) in enumerate(eachrow(solver.grads))
             sum = 0
             for item in row
-                sum += square(item)
+                sum += item^2
             end
             # s_t[i,1] = sqrt(sum)
             # append!(s_t, sqrt(sum))
             push!(s_t, sqrt(sum))
         end
 
-        println(typeof(s_t))
-        println("s_t vector:")
-        display(s_t)
-        print("\n\n")
-
         # Create diagonal matrix H_t
-        # First of all create the diagonal matrix from s_t solution
-
+        # Create diagonal matrix starting from s_t 
         mat = diagm(s_t)
-
-        println("Diag matrix:")
-        display(mat)
-        print("\n\n")
 
         # Construct Identity matrix
         Iden = Matrix{Float64}(I, solver.n, solver.n)
 
-        println("Identity:")
-        display(Iden)
-        print("\n\n")
-
         delta_Id = solver.delta .* Iden
 
-        println("Delta I:")
-        display(delta_Id)
+        # Sum them (hessian approximation)
+        H_t = delta_Id + mat
+
+
+        #= 
+        Proximal term computation: dot(x,A,y) faster way of computing 
+            \left\langle x, A*y \right\rangle
+        the result A*y is not stored and this allow for a memory saving
+        =#   
+        Psi = 0.5 .* dot(previous_lambda, H_t, previous_lambda)
+
+        println("Psi value:")
+        display(Psi)
         print("\n\n")
 
-        # Finally sum them (hessian approximation)
-        H_t = delta_Id + mat
-       
-        println("H_t:")
-        display(H_t)
+        solver.x, mu = solve_lagrangian_relaxation(solver)
+
+        println("x value:")
+        display(solver.x)
         print("\n\n")
+
+        println("mu value:")
+        display(mu)
+        print("\n\n")
+
+
+        #=
+        Compute the update rule for the lagrangian multipliers lambda: can use 
+        one among the three showed, then soft threshold the result
+        =#
 
         iter += 1
 

@@ -1,0 +1,46 @@
+\begin{thebibliography}{1}
+
+\bibitem{JMLR:v12:duchi11a}
+John Duchi, Elad Hazan, and Yoram Singer.
+\newblock Adaptive subgradient methods for online learning and stochastic
+  optimization.
+\newblock {\em Journal of Machine Learning Research}, 12(61):2121--2159, 2011.
+
+\bibitem{NIPS2009_7cce53cf}
+Lin Xiao.
+\newblock Dual averaging method for regularized stochastic learning and online
+  optimization.
+\newblock In Y.~Bengio, D.~Schuurmans, J.~Lafferty, C.~Williams, and
+  A.~Culotta, editors, {\em Advances in Neural Information Processing Systems},
+  volume~22. Curran Associates, Inc., 2009.
+
+\bibitem{inproceedings}
+John Duchi, Shai Shalev-Shwartz, Yoram Singer, and Ambuj Tewari.
+\newblock Composite objective mirror descent.
+\newblock In {\em Composite Objective Mirror Descent}, pages 14--26, 12 2010.
+
+\bibitem{Frangioni2017}
+Antonio Frangioni, Bernard Gendron, and Enrico Gorgone.
+\newblock On the computational efficiency of subgradient methods: a case study
+  with lagrangian bounds.
+\newblock {\em Mathematical Programming Computation}, 9(4):573--604, Dec 2017.
+
+\bibitem{OPT-003}
+Neal Parikh and Stephen Boyd.
+\newblock Proximal algorithms.
+\newblock {\em Foundations and Trends® in Optimization}, 1(3):127--239, 2014.
+
+\bibitem{Nesterov2009}
+Yurii Nesterov.
+\newblock Primal-dual subgradient methods for convex problems.
+\newblock {\em Mathematical Programming}, 120(1):221--259, Aug 2009.
+
+\bibitem{nonnegative-orthant}
+Ang Andersen.
+\newblock Projection onto nonnegative orthant, rectangular box and polyhedron,
+  2020.
+\newblock First draft: March 19, 2020; Last update: December 23, 2020.
+  Université de Mons,
+  \url{https://angms.science/doc/CVX/Proj_nonnegBoxpoly.pdf}.
+
+\end{thebibliography}

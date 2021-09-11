@@ -264,7 +264,7 @@ end
 
 
 # Loop function which implements customized ADAGRAD algorithm
-function my_ADAGRAD(solver)
+function my_ADAGRAD(solver, update_rule)
 
     iter = 0
 
@@ -335,6 +335,8 @@ function my_ADAGRAD(solver)
         Compute the update rule for the lagrangian multipliers lambda: can use 
         one among the three showed, then soft threshold the result
         =#
+        
+
 
         iter += 1
 
@@ -345,4 +347,4 @@ function my_ADAGRAD(solver)
 end
 
 
-val = my_ADAGRAD(solver)
+val = my_ADAGRAD(solver, 1)

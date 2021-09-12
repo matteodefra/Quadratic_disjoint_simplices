@@ -64,7 +64,14 @@ display(I_K)
 print("\n\n")
 
 # Initialize x iterates to zero
-x = abs.(randn((n,1)))
+# x = abs.(randn((n,1)))
+x = ones((n,1))
+
+for set in I_K
+    for item in set
+        x[item] = 1 / length(set)
+    end
+end
 
 println("Starting x:")
 display(x)
@@ -101,7 +108,7 @@ eta = 1
 delta = rand()
 
 # Initialize max_iter
-max_iter = 50
+max_iter = 30
 
 # Create struct solver to approach the problem
 mutable struct Solver
@@ -199,10 +206,10 @@ display(solver.Full_mat)
 print("\n\n")
 
 # Compute QR factorization of Full_mat
-Q_hat, R_hat = qr!(solver.Full_mat)
+# Q_hat, R_hat = qr!(solver.Full_mat)
 
-solver.Q_hat = Q_hat
-solver.R_hat = R_hat
+# solver.Q_hat = Q_hat
+# solver.R_hat = R_hat
 
 
 function primal_function(solver, actual_x)
@@ -236,7 +243,15 @@ function solve_lagrangian_relaxation(solver)
 
     b = vcat(diff, o)
 
+    println("b vector:")
+    display(b)
+    print("\n\n")
+
     b = solver.Q_hat' .* b
+
+    println("b multiplied")
+    display(b)
+    print("\n\n")
 
     R_hat = solver.R_hat
 
@@ -352,7 +367,7 @@ function my_ADAGRAD(solver, update_rule)
             
         which is always differentiable since it consists in an hyperplane
         =#
-        subgrad = - solver.x
+        subgrad = solver.x
 
         # Store subgradient in matrix
         solver.grads = [solver.grads subgrad]
@@ -396,9 +411,21 @@ function my_ADAGRAD(solver, update_rule)
 
         b = vcat(diff, o)
 
-        x_mu = solver.Full_mat \ b #solve_lagrangian_relaxation(solver)
+        # println("Full matrix")
+        # display(solver.Full_mat)
+        # print("\n\n")
 
-        solver.x, mu = x_mu[1:solver.n] , x_mu[solver.n + 1 : solver.n + solver.K]
+        # println("b vector")
+        # display(b)
+        # print("\n\n")
+
+        x_mu = solver.Full_mat \ b 
+
+        # println("x_mu vector")
+        # display(x_mu)
+        # print("\n\n")
+
+        solver.x, mu = x_mu[1:solver.n] , x_mu[solver.n + 1 : solver.n + solver.K] #solve_lagrangian_relaxation(solver)
 
         if all(x -> x > 0, solver.x)
             println("x value:")
@@ -430,7 +457,7 @@ function my_ADAGRAD(solver, update_rule)
 end
 
 
-optimal_x, optimal_lambda = my_ADAGRAD(solver, 2)
+optimal_x, optimal_lambda = my_ADAGRAD(solver, 1)
 
 println("Optimal x found:")
 display(optimal_x)

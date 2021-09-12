@@ -2,6 +2,7 @@ using Convex, SCS
 using Random
 using LinearAlgebra
 using AutoGrad
+using Statistics
 
 print("Enter desired dimension n: ")
 n = readline()
@@ -64,16 +65,16 @@ display(I_K)
 print("\n\n")
 
 # Initialize x iterates to zero
-x = ones((n,1))
+x = abs.(randn((n,1)))
 
-println("Empty x:")
+println("Starting x:")
 display(x)
 print("\n\n")
 
 # Initialize lambda iterates to zero
-lambda = ones((n,1))
+lambda = abs.(randn((n,1)))
 
-println("Empty lambdas:")
+println("Starting lambdas:")
 display(lambda)
 print("\n\n")
 
@@ -101,7 +102,7 @@ eta = 1
 delta = rand()
 
 # Initialize max_iter
-max_iter = 20
+max_iter = 50
 
 # Create struct solver to approach the problem
 mutable struct Solver
@@ -113,7 +114,7 @@ mutable struct Solver
     I_K :: Vector{Array{Int64}}
     x :: Array{Float64}
     previous_x :: Array{Float64}
-    grads :: Array{Float64}#Vector{Array{Int64}}
+    grads :: Array{Float64}
     Q :: Matrix{Float64}
     Full_mat :: Matrix{Float64}
     Q_hat :: Matrix{Float64}
@@ -217,12 +218,6 @@ function lagrangian_relaxation(solver, previous_x, previous_lambda)
     return previous_x' * solver.Q * previous_x .+ solver.q' * previous_x .- previous_lambda' * previous_x
 end
 
-
-println("Primal function value:$(primal_function(solver,solver.x))")
-
-println("Dual function value:$(lagrangian_relaxation(solver,solver.x, solver.lambda))")
-
-
 #=
     Solve the problem of 
         x_t = \argmin_{x \in X} \{ x^T * Q * x + q * x - λ_{t-1} * x \}
@@ -240,9 +235,11 @@ println("Dual function value:$(lagrangian_relaxation(solver,solver.x, solver.lam
 function solve_lagrangian_relaxation(solver)
 
     # Create vector [λ_{t-1} - q, b]
-    b = ones((solver.K,1))
+    o = ones((solver.K,1))
 
-    b = vcat(solver.lambda .- solver.q, b)
+    diff = solver.lambda - solver.q
+
+    b = vcat(diff, o)
 
     b = solver.Q_hat' .* b
 
@@ -258,12 +255,8 @@ function solve_lagrangian_relaxation(solver)
         s = sum( R_hat[i,j]*x_mu[j] for j=i+1:dim )
         x_mu[i] = ( b[i] - s ) / R_hat[i,i]
     end
-
-    # println("x_mu vector:")
-    # display(x_mu)
-    # print("\n\n")
     
-    return x_mu[1:solver.n], x_mu[solver.n + 1 : dim]
+    return x_mu[1:solver.n] , x_mu[solver.n + 1 : dim]
 end
 
 
@@ -287,8 +280,6 @@ end
 
 =#
 function compute_update_rule(solver, update_rule, H_t, Psi)
-
-    local lambda
     
     if update_rule == 1
 
@@ -302,12 +293,8 @@ function compute_update_rule(solver, update_rule, H_t, Psi)
 
         G_t = Diagonal(G_t)^(-0.5)
 
-        println("Diagonal full outer product of subgradient:")
-        display(G_t)
-        print("\n\n")
-
         lambda = solver.lambda + solver.eta * G_t * solver.grads[:,end]
-
+        
     elseif update_rule == 2
 
         # Average of gradients
@@ -316,15 +303,15 @@ function compute_update_rule(solver, update_rule, H_t, Psi)
 
         avg_gradient = mean!(means_vector,solver.grads)
 
-        println("Average subgradients:")
-        display(avg_gradient)        
-        print("\n\n")
-
-        lambda = - H_t^(-1) .* solver.iteration .* solver.eta .* avg_gradient
+        lambda = solver.iteration * solver.eta * (- H_t^(-1) * avg_gradient)
 
     else
-        
-        lambda = solver.lambda .+ H_t^(-1) .* ( Psi .- solver.eta .* solver.grads[:,end] )
+
+        val = Psi .- (solver.eta .* solver.grads[:,end])
+
+        update_part = H_t^(-1) * val
+
+        lambda = solver.lambda + update_part
 
     end
 
@@ -348,6 +335,14 @@ function my_ADAGRAD(solver, update_rule)
         
         # Compute function value
         f_val = primal_function(solver, previous_x)
+
+        println("Primal function value: $f_val")
+        print("\n\n")
+
+        L_val = lagrangian_relaxation(solver, solver.x, solver.lambda)
+
+        println("Lagrangian relaxation value: $L_val")
+        print("\n\n")
 
         # Compute subgradient of \psi (check report for derivation)
         subgrad = previous_x
@@ -444,7 +439,13 @@ println("Comparing with Convex.jl solution")
 
 x = Variable(n)
 
-problem = minimize(quadform(x, Q) + dot(q, x), [ solver.A[1,:] .* x = 1, solver.A[2,:] .* x = 1 , solver.A[3,:] .* x = 1, x >= 0 ])
+problem = minimize(quadform(x, Q) + dot(q, x))
+
+for row in eachrow(solver.A)
+    problem.constraints += [row' * x == 1]
+end
+
+problem.constraints += [x >= 0]
 
 println(problem)
 
@@ -453,3 +454,12 @@ solve!(problem, () -> SCS.Optimizer(verbose=true), verbose=false)
 println("problem status is ", problem.status) # :Optimal, :Infeasible, :Unbounded etc.
 println("optimal value is ", problem.optval)
 
+println("Primal variables of problem:")
+display(x)
+print("\n\n")
+
+println("Dual variables constraints")
+for constraint in problem.constraints
+    display(constraint.dual)
+    print("\n")
+end

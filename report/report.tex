@@ -521,7 +521,7 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
           \State $x_0 \gets 0$
           \For{$t \gets 1$ to $T$}
             \State $Loss \gets f(x_{t-1})$
-            \State $g_t \gets \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}}$\Comment{Compute subgradient}
+            \State $g_t \gets \dfrac{\partial \psi_\lambda(\lambda)}{\partial \lambda}$\Comment{Compute subgradient}
             \State $g_{1:t} \gets \left[ g_{1:t-1}\ g_t \right]$\Comment{Store subgradient}
             \State $s_{t,i} \gets \| g_{1:t,i} \|_2$\Comment{Solution of the problem \ref{sec:convergence}}
             \State $H_t = \gets \delta \mathit{I} + diag(s_t)$

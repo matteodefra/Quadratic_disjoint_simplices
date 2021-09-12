@@ -1,7 +1,6 @@
 using Convex, SCS
 using Random
 using LinearAlgebra
-using AutoGrad
 using Statistics
 
 print("Enter desired dimension n: ")
@@ -153,9 +152,12 @@ solver.delta = delta
 
 solver.max_iter = max_iter
 
-# println("Solver struct:\n$solver")
-
-
+#= 
+Create matrix of KKT conditions
+    Q A^T
+    A 0
+to solve the lagrangian_relaxation
+=#
 function construct_full_matrix(solver)
     Full_mat = vcat(solver.Q, solver.A)
     
@@ -190,13 +192,6 @@ println("A constraint matrix:")
 display(solver.A)
 print("\n\n")
 
-
-#= 
-Create matrix of KKT conditions
-    Q A^T
-    A 0
-to solve the lagrangian_relaxation
-=#
 solver.Full_mat = construct_full_matrix(solver)
 
 println("Full matrix:")
@@ -344,8 +339,20 @@ function my_ADAGRAD(solver, update_rule)
         println("Lagrangian relaxation value: $L_val")
         print("\n\n")
 
-        # Compute subgradient of \psi (check report for derivation)
-        subgrad = previous_x
+        #= 
+        Compute subgradient of \psi (check report for derivation)
+        The subgradient is given by the derivative of the Lagrangian function w.r.t. λ
+            
+            ∇_λ (x_{star}) ( x_{star} * Q * x_{star} + q * x_{star} - λ * x_{star} )
+        
+        where the given x_{star} is computed at the previous step. As a consequence the L function
+        is given by  
+        
+            ∇_λ (x_{star}) ( λ * x_{star} + constant )
+            
+        which is always differentiable since it consists in an hyperplane
+        =#
+        subgrad = - solver.x
 
         # Store subgradient in matrix
         solver.grads = [solver.grads subgrad]
@@ -353,7 +360,7 @@ function my_ADAGRAD(solver, update_rule)
         # Solution of lagrangian_relaxation of problem 2.4 (see report)
         s_t = Vector{Float64}()
 
-        for (i,row) in enumerate(eachrow(solver.grads))
+        for row in eachrow(solver.grads)
             sum = 0
             for item in row
                 sum += item^2
@@ -383,12 +390,22 @@ function my_ADAGRAD(solver, update_rule)
         =#   
         Psi = 0.5 .* dot(previous_lambda, H_t, previous_lambda)
 
-        solver.x, mu = solve_lagrangian_relaxation(solver)
+        o = ones((solver.K,1))
 
-        println("x value:")
-        display(solver.x)
-        print("\n\n")
+        diff = previous_lambda - solver.q
 
+        b = vcat(diff, o)
+
+        x_mu = solver.Full_mat \ b #solve_lagrangian_relaxation(solver)
+
+        solver.x, mu = x_mu[1:solver.n] , x_mu[solver.n + 1 : solver.n + solver.K]
+
+        if all(x -> x > 0, solver.x)
+            println("x value:")
+            display(solver.x)
+            print("\n\n")
+        end
+    
         #=
         Compute the update rule for the lagrangian multipliers lambda: can use 
         one among the three showed, then soft threshold the result
@@ -396,9 +413,9 @@ function my_ADAGRAD(solver, update_rule)
         solver.lambda = compute_update_rule(solver ,update_rule, H_t, Psi)
 
 
-        println("Updated value of lambda:")
-        display(solver.lambda)
-        print("\n\n")
+        # println("Updated value of lambda:")
+        # display(solver.lambda)
+        # print("\n\n")
 
 
         iter += 1
@@ -413,7 +430,7 @@ function my_ADAGRAD(solver, update_rule)
 end
 
 
-optimal_x, optimal_lambda = my_ADAGRAD(solver, 1)
+optimal_x, optimal_lambda = my_ADAGRAD(solver, 2)
 
 println("Optimal x found:")
 display(optimal_x)

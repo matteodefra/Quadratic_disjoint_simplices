@@ -1,7 +1,9 @@
 using Convex, SCS
 using Random
 using LinearAlgebra
-using Statistics
+import Pkg; Pkg.add("ForwardDiff.jl")
+using ForwardDiff
+
 
 print("Enter desired dimension n: ")
 n = readline()
@@ -108,7 +110,10 @@ eta = 1
 delta = rand()
 
 # Initialize max_iter
-max_iter = 30
+max_iter = 60
+
+# Initialize epsilon
+epsilon = 0.1
 
 # Create struct solver to approach the problem
 mutable struct Solver
@@ -121,6 +126,7 @@ mutable struct Solver
     x :: Array{Float64}
     previous_x :: Array{Float64}
     grads :: Array{Float64}
+    G_t :: Matrix{Float64}
     Q :: Matrix{Float64}
     Full_mat :: Matrix{Float64}
     Q_hat :: Matrix{Float64}
@@ -130,6 +136,7 @@ mutable struct Solver
     delta :: Float64
     max_iter :: Int
     A :: Array{Int64}
+    epsilon :: Float64
     Solver() = new()
 end
 
@@ -149,6 +156,8 @@ solver.x = x
 
 solver.grads = Array{Float64}(undef,n,0)
 
+solver.G_t = Matrix{Float64}(undef, solver.n, solver.n)
+
 solver.Q = Q
 
 solver.q = q
@@ -158,6 +167,8 @@ solver.eta = eta
 solver.delta = delta
 
 solver.max_iter = max_iter
+
+solver.epsilon = epsilon
 
 #= 
 Create matrix of KKT conditions
@@ -243,15 +254,7 @@ function solve_lagrangian_relaxation(solver)
 
     b = vcat(diff, o)
 
-    println("b vector:")
-    display(b)
-    print("\n\n")
-
     b = solver.Q_hat' .* b
-
-    println("b multiplied")
-    display(b)
-    print("\n\n")
 
     R_hat = solver.R_hat
 
@@ -294,24 +297,28 @@ function compute_update_rule(solver, update_rule, H_t, Psi)
     if update_rule == 1
 
         # full outer product of gradients
-        G_t = Matrix{Float64}(undef, solver.n, solver.n)
         for col in eachcol(solver.grads)
 
-            G_t .+= col .* col'
+            solver.G_t .+= col .* col'
 
         end
 
-        G_t = Diagonal(G_t)^(-0.5)
+        G_t = Diagonal(solver.G_t)^(-0.5)
 
         lambda = solver.lambda + solver.eta * G_t * solver.grads[:,end]
         
     elseif update_rule == 2
 
         # Average of gradients
+        avg_gradient = Vector{Float64}()
 
-        means_vector = ones((n,1))
+        for row in eachrow(solver.grads)
 
-        avg_gradient = mean!(means_vector,solver.grads)
+            total = sum(row)
+
+            push!(avg_gradient, total / solver.iteration )
+        
+        end
 
         lambda = solver.iteration * solver.eta * (- H_t^(-1) * avg_gradient)
 
@@ -332,12 +339,44 @@ function compute_update_rule(solver, update_rule, H_t, Psi)
 end
 
 
+function check_duality_gap(Primals, Duals, solver)
+    
+    if isempty(Primals) || isempty(Duals)
+        return true
+    end
+
+    duality_gap = (Primals[end] - Duals[end])[1]
+
+    println("Duality gap:")
+    display(duality_gap)
+    print("\n\n")
+
+    if abs(duality_gap) < solver.epsilon
+        return false
+    else
+        return true
+    end 
+
+end
+
+
+
+function get_grad()
+    return 0
+end
+
+
 # Loop function which implements customized ADAGRAD algorithm
 function my_ADAGRAD(solver, update_rule)
 
     iter = 1
 
-    while iter < solver.max_iter #&& check_condition(solver.previous_lambda, solver.lambda)
+    Primals = []
+    Duals = []
+
+    solver.iteration = iter
+
+    while iter < solver.max_iter && check_duality_gap(Primals, Duals, solver)
        
         previous_x = solver.x
 
@@ -349,10 +388,14 @@ function my_ADAGRAD(solver, update_rule)
         println("Primal function value: $f_val")
         print("\n\n")
 
+        push!(Primals, f_val)
+
         L_val = lagrangian_relaxation(solver, solver.x, solver.lambda)
 
         println("Lagrangian relaxation value: $L_val")
         print("\n\n")
+
+        push!(Duals, L_val)
 
         #= 
         Compute subgradient of \psi (check report for derivation)
@@ -365,8 +408,10 @@ function my_ADAGRAD(solver, update_rule)
         
             ∇_λ (x_{star}) ( λ * x_{star} + constant )
             
-        which is always differentiable since it consists in an hyperplane
+        which is always differentiable since it is an hyperplane
         =#
+        subgrad = get_grad(solver)
+
         subgrad = solver.x
 
         # Store subgradient in matrix
@@ -457,7 +502,7 @@ function my_ADAGRAD(solver, update_rule)
 end
 
 
-optimal_x, optimal_lambda = my_ADAGRAD(solver, 1)
+optimal_x, optimal_lambda = my_ADAGRAD(solver, 2)
 
 println("Optimal x found:")
 display(optimal_x)

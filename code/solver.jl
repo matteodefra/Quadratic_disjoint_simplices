@@ -228,6 +228,12 @@ print("\n\n")
 #     return actual_x' * solver.Q * actual_x .+ solver.q' * x
 # end
 
+# Compute function value
+# f_val = primal_function(solver, previous_x)
+
+# println("Primal function value: $f_val")
+# print("\n\n")
+
 function lagrangian_relaxation(solver, previous_x, previous_lambda)
     return previous_x' * solver.Q * previous_x .+ solver.q' * previous_x .- previous_lambda' * previous_x
 end
@@ -417,17 +423,7 @@ function my_ADAGRAD(solver, update_rule)
 
     while solver.iteration < solver.max_iter
        
-        previous_x = solver.x
-
         previous_lambda = solver.lambda
-        
-        # Compute function value
-        # f_val = primal_function(solver, previous_x)
-
-        # println("Primal function value: $f_val")
-        # print("\n\n")
-
-        # push!(Primals, f_val)
 
         L_val = lagrangian_relaxation(solver, solver.x, solver.lambda)
 

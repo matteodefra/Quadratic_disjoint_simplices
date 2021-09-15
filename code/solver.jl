@@ -79,11 +79,11 @@ println("Starting x:")
 display(x)
 print("\n\n")
 
-# Initialize lambda iterates to zero
-lambda = abs.(randn((n,1)))
+# Initialize λ iterates to zero
+λ = abs.(randn((n,1)))
 
-println("Starting lambdas:")
-display(lambda)
+println("Starting λs:")
+display(λ)
 print("\n\n")
 
 # Create random matrix A
@@ -103,23 +103,23 @@ println("q vector:")
 display(q)
 print("\n\n")
 
-# Initialize eta
-eta = 1
+# Initialize η
+η = 1
 
-# Initialize delta
-delta = rand()
+# Initialize δ
+δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 60
+max_iter = 100
 
-# Initialize epsilon
-epsilon = 1e-2
+# Initialize ϵ
+ϵ = 1e-3
 
 # Create struct solver to approach the problem
 mutable struct Solver
     n :: Int
     iteration :: Int
-    lambda :: Array{Float64}
+    λ :: Array{Float64}
     K :: Int
     I_K :: Vector{Array{Int64}}
     x :: Array{Float64}
@@ -128,15 +128,15 @@ mutable struct Solver
     Q :: Matrix{Float64}
     Full_mat :: Matrix{Float64}
     q :: Array{Float64}
-    eta :: Float64
-    delta :: Float64
+    η :: Float64
+    δ :: Float64
     max_iter :: Int
     A :: Array{Int64}
-    epsilon :: Float64
+    ϵ :: Float64
     num_iterations :: Vector{Float64}
     relaxation_values :: Vector{Float64}
     x_values :: Array{Float64}
-    lambda_values :: Array{Float64}
+    λ_values :: Array{Float64}
     Solver() = new()
 end
 
@@ -146,7 +146,7 @@ solver.n = n
 
 solver.iteration = 0
 
-solver.lambda = lambda
+solver.λ = λ
 
 solver.K = K
 
@@ -162,13 +162,13 @@ solver.Q = Q
 
 solver.q = q
 
-solver.eta = eta
+solver.η = η
 
-solver.delta = delta
+solver.δ = δ
 
 solver.max_iter = max_iter
 
-solver.epsilon = epsilon
+solver.ϵ = ϵ
 
 solver.num_iterations = Vector{Float64}()
 
@@ -176,7 +176,7 @@ solver.relaxation_values = Vector{Float64}()
 
 solver.x_values = Array{Float64}(undef,n,0)
 
-solver.lambda_values = Array{Float64}(undef,n,0)
+solver.λ_values = Array{Float64}(undef,n,0)
 
 #= 
 Create matrix of KKT conditions
@@ -234,8 +234,8 @@ print("\n\n")
 # println("Primal function value: $f_val")
 # print("\n\n")
 
-function lagrangian_relaxation(solver, previous_x, previous_lambda)
-    return previous_x' * solver.Q * previous_x .+ solver.q' * previous_x .- previous_lambda' * previous_x
+function lagrangian_relaxation(solver, previous_x, previous_λ)
+    return previous_x' * solver.Q * previous_x .+ solver.q' * previous_x .- previous_λ' * previous_x
 end
 
 #=
@@ -257,7 +257,7 @@ function solve_lagrangian_relaxation(solver)
     # Create vector [λ_{t-1} - q, b]
     o = ones((solver.K,1))
 
-    diff = solver.lambda - solver.q
+    diff = solver.λ - solver.q
 
     b = vcat(diff, o)
 
@@ -303,16 +303,26 @@ function compute_update_rule(solver, update_rule, H_t, Psi)
     
     if update_rule == 1
 
-        # full outer product of gradients
-        for col in eachcol(solver.grads)
+        # Add only the latter subgradient, since summation moves along with 
+        last_subgrad = solver.grads[:, end]
 
-            solver.G_t .+= col .* col'
+        # Add the latter g_t * g_t' component-wise to the matrix G_t
+        solver.G_t .+= last_subgrad * last_subgrad'
 
-        end
+        pow = -0.5
 
-        G_t = Diagonal(solver.G_t)^(-0.5)
+        # Create a copy for Diagonal operation and exponentiation
+        G_t = solver.G_t
 
-        lambda = solver.lambda + solver.eta * G_t * solver.grads[:,end]
+        # Apply Diagonal before exponentiation, otherwise memory explodes
+        G_t = Diagonal(G_t)
+
+        G_t = G_t^pow
+
+        # Replace all the NaN values with 0.0 to avoid NaN values in the iterates
+        replace!(G_t, NaN => 0.0)
+
+        λ = solver.λ + solver.η * G_t * solver.grads[:,end]
         
     elseif update_rule == 2
 
@@ -327,21 +337,21 @@ function compute_update_rule(solver, update_rule, H_t, Psi)
         
         end
 
-        lambda = solver.iteration * solver.eta * (- H_t^(-1) * avg_gradient)
+        λ = solver.iteration * solver.η * (- H_t^(-1) * avg_gradient)
 
     else
 
-        val = Psi .- (solver.eta .* solver.grads[:,end])
+        val = Psi .- (solver.η .* solver.grads[:,end])
 
         update_part = H_t^(-1) * val
 
-        lambda = solver.lambda + update_part
+        λ = solver.λ + update_part
 
     end
 
-    lambda = max.(0, lambda)
+    λ = max.(0, λ)
 
-    return lambda
+    return λ
 
 end
 
@@ -358,7 +368,7 @@ function check_duality_gap(Primals, Duals, solver)
     display(duality_gap)
     print("\n\n")
 
-    if abs(duality_gap) < solver.epsilon
+    if abs(duality_gap) < solver.ϵ
         return true
     else
         return false
@@ -373,17 +383,17 @@ end
     whenever this condition is met we have reached an optimal value of multipliers λ,
     hence we met complementary slackness and we can stop
 =#
-function check_lambda_norm(solver, current_lambda, previous_lambda)
+function check_λ_norm(solver, current_λ, previous_λ)
     
-    res = current_lambda .- previous_lambda
+    res = current_λ .- previous_λ
 
     distance = norm(res)
 
-    println("Distance between lambda's")
+    println("Distance between λ's")
     display(distance)
     print("\n\n")
 
-    if distance <= solver.epsilon
+    if distance <= solver.ϵ
         # We should exit the loop
         return true
     end
@@ -403,7 +413,7 @@ function get_grad(solver)
 
     gradient(val) = ForwardDiff.jacobian(var -> L(var), val)
 
-    subgradient = gradient(solver.lambda)'
+    subgradient = gradient(solver.λ)'
 
     return subgradient
 
@@ -415,7 +425,7 @@ end
     presented in the report.
     Takes as parameters:
         @param solver: struct solver containing all the required data structures
-        @param update_rule: an integer specifying what update rule to use for the lambda's
+        @param update_rule: an integer specifying what update rule to use for the λ's
 =#  
 function my_ADAGRAD(solver, update_rule)
 
@@ -423,11 +433,11 @@ function my_ADAGRAD(solver, update_rule)
 
     while solver.iteration < solver.max_iter
        
-        previous_lambda = solver.lambda
+        previous_λ = solver.λ
 
-        L_val = lagrangian_relaxation(solver, solver.x, solver.lambda)
+        L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
 
-        println("Lagrangian relaxation value: $L_val")
+        println("Lagrangian relaxation value: $(L_val[1])")
         print("\n\n")
 
         #= 
@@ -446,6 +456,9 @@ function my_ADAGRAD(solver, update_rule)
         subgrad = get_grad(solver)
         # subgrad = solver.x
 
+        println("Subgradient:")
+        display(subgrad)
+        print("\n\n")
 
         # Store subgradient in matrix
         solver.grads = [solver.grads subgrad]
@@ -468,21 +481,33 @@ function my_ADAGRAD(solver, update_rule)
         # Construct Identity matrix
         Iden = Diagonal(ones(solver.n,solver.n))
 
-        delta_Id = solver.delta .* Iden
+        δ_Id = solver.δ .* Iden
 
         # Sum them (hessian approximation)
-        H_t = delta_Id + mat
+        H_t = δ_Id + mat
 
         #= 
         Proximal term computation: dot(x,A,y) faster way of computing 
-            \left\langle x, A*y \right\rangle
+            ⟨ x, A*y ⟩
         the result A*y is not stored and this allow for a memory saving
         =#   
-        Psi = 0.5 .* dot(previous_lambda, H_t, previous_lambda)
+        Psi = 0.5 .* dot(previous_λ, H_t, previous_λ)
+
+        part_one = H_t * previous_λ
+
+        println("Part one:")
+        display(part_one)
+        print("\n\n")
+
+        part_two = dot(previous_λ, part_one)
+
+        println("Totale")
+        display(part_two)
+        print("\n\n")
 
         o = ones((solver.K,1))
 
-        diff = previous_lambda - solver.q
+        diff = previous_λ - solver.q
 
         b = vcat(diff, o)
 
@@ -490,17 +515,17 @@ function my_ADAGRAD(solver, update_rule)
 
         solver.x, mu = x_mu[1:solver.n] , x_mu[solver.n + 1 : solver.n + solver.K] #solve_lagrangian_relaxation(solver)
 
-        if all(x -> x > 0, solver.x)
-            println("x value:")
-            display(solver.x)
-            print("\n\n")
-        end
+        # if all(x -> x > 0, solver.x)
+        println("x value:")
+        display(solver.x)
+        print("\n\n")
+        # end
     
         #=
-        Compute the update rule for the lagrangian multipliers lambda: can use 
+        Compute the update rule for the lagrangian multipliers λ: can use 
         one among the three showed, then soft threshold the result
         =#
-        solver.lambda = compute_update_rule(solver ,update_rule, H_t, Psi)
+        solver.λ = compute_update_rule(solver ,update_rule, H_t, Psi)
 
         # Storing current iteration
         push!(solver.num_iterations, solver.iteration)
@@ -512,10 +537,10 @@ function my_ADAGRAD(solver, update_rule)
         solver.x_values = [solver.x_values solver.x]
 
         # Storing λ_{solver.iteration}
-        solver.lambda_values = [solver.lambda_values solver.lambda]
+        solver.λ_values = [solver.λ_values solver.λ]
 
-        if check_lambda_norm(solver, solver.lambda, previous_lambda)
-            println("Optimal lambda found")
+        if check_λ_norm(solver, solver.λ, previous_λ)
+            println("Optimal λ found")
             break
         end
 
@@ -523,33 +548,26 @@ function my_ADAGRAD(solver, update_rule)
 
         push!(solver.num_iterations, solver.iteration)
 
-        solver.eta = 1 / solver.iteration
+        solver.η = 1 / solver.iteration
 
     end
 
-    return solver.x, solver.lambda
+    return solver.x, solver.λ
 
 end
 
 
-optimal_x, optimal_lambda = my_ADAGRAD(solver, 1)
-
-println("Lagrangians")
-display(solver.relaxation_values)
-print("\n")
-println("Lambda vals")
-display(solver.lambda_values)
-print("\n")
+optimal_x, optimal_λ = my_ADAGRAD(solver, 2)
 
 println("Optimal x found:")
 display(optimal_x)
 print("\n\n")
 
-println("Optimal lambda found:")
-display(optimal_lambda)
+println("Optimal λ found:")
+display(optimal_λ)
 print("\n\n")
 
-optimal_dual = lagrangian_relaxation(solver, optimal_x, optimal_lambda)
+optimal_dual = lagrangian_relaxation(solver, optimal_x, optimal_λ)
 
 println("Value of the lagrangian function:")
 display(optimal_dual)
@@ -587,9 +605,19 @@ for constraint in problem.constraints
 end
 
 
-println("Duality gap between f( x* ) of Convex.jl and psi( lambda )")
+println("Duality gap between f( x* ) of Convex.jl and psi( λ )")
 
 dual_gap = problem.optval[1] - optimal_dual[1]
 
 display(dual_gap)
 print("\n")
+
+using Plots
+
+gr()
+
+plt = plot(solver.num_iterations[2:solver.iteration-1], solver.relaxation_values[2:solver.iteration-1])
+
+display(plt);
+
+savefig(plt, "convergence.png")

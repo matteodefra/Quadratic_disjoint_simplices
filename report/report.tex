@@ -377,7 +377,7 @@ To solve the problem \eqref{eqn:primal-dual-update} and \eqref{eqn:composite-mir
 among three different update rules, in order \eqref{eqn:projection}, \eqref{eqn:primal-dual-update} and \eqref{eqn:composite-mirror-update}:
 \begin{equation}
   \begin{gathered}
-    \lambda_{t+1} = P_{\mathcal{X}} \{ \lambda_t - \eta\, diag(G_t)^{-1/2} g_t \} \\
+    \lambda_{t+1} = P_{\mathcal{X}} \{ \lambda_t + \eta\, diag(G_t)^{-1/2} g_t \} \\
     \lambda_{t+1} = \argmin_{\lambda \in \mathcal{X}} \{ \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{1}{t} \Psi_t(\lambda) \} \\
     \lambda_{t+1} = \argmin_{\lambda \in \mathcal{X}} \{ \eta \left\langle g_t,\lambda \right\rangle + B_{\Psi_t} (\lambda,\lambda_t) \}
     \label{eqn:updates}  

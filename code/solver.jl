@@ -63,7 +63,7 @@ I_K = initialize_sets(indexes, K, n)
 
 println("Set of I_K arrays:")
 display(I_K)
-print("\n\n")
+print("\n")
 
 # Initialize x iterates to zero
 x = randn((n,1))
@@ -77,14 +77,14 @@ x = randn((n,1))
 
 println("Starting x:")
 display(x)
-print("\n\n")
+print("\n")
 
 # Initialize λ iterates to zero
 λ = abs.(randn((n,1)))
 
 println("Starting λs:")
 display(λ)
-print("\n\n")
+print("\n")
 
 # Create random matrix A
 A_help = randn(Float64 ,n, n)
@@ -94,14 +94,14 @@ Q = A_help' * A_help
 
 println("Q matrix:")
 display(Q)
-print("\n\n")
+print("\n")
 
 # Initialize also random q vector 
 q = randn(Float64, (n,1))
 
 println("q vector:")
 display(q)
-print("\n\n")
+print("\n")
 
 # Initialize η
 η = 1
@@ -110,10 +110,10 @@ print("\n\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 100
+max_iter = 300
 
 # Initialize ϵ
-ϵ = 1e-3
+ϵ = 1e-4
 
 # Create struct solver to approach the problem
 mutable struct Solver
@@ -125,8 +125,11 @@ mutable struct Solver
     x :: Array{Float64}
     grads :: Array{Float64}
     G_t :: Matrix{Float64}
+    s_t :: Array{Float64}
+    avg_gradient :: Array{Float64}
     Q :: Matrix{Float64}
     Full_mat :: Matrix{Float64}
+    F :: LU
     q :: Array{Float64}
     η :: Float64
     δ :: Float64
@@ -137,6 +140,7 @@ mutable struct Solver
     relaxation_values :: Vector{Float64}
     x_values :: Array{Float64}
     λ_values :: Array{Float64}
+    λ_distances :: Vector{Float64}
     Solver() = new()
 end
 
@@ -154,9 +158,13 @@ solver.I_K = I_K
 
 solver.x = x
 
-solver.grads = Array{Float64}(undef,n,0)
+solver.grads = Array{Float64}(undef, n, 0)
 
 solver.G_t = Matrix{Float64}(undef, solver.n, solver.n)
+
+solver.s_t = Array{Float64}(undef, solver.n, 1)
+
+solver.avg_gradient = Array{Float64}(undef, solver.n, 1)
 
 solver.Q = Q
 
@@ -178,6 +186,8 @@ solver.x_values = Array{Float64}(undef,n,0)
 
 solver.λ_values = Array{Float64}(undef,n,0)
 
+solver.λ_distances = Vector{Float64}()
+
 #= 
 Create matrix of KKT conditions
     Q A^T
@@ -198,6 +208,7 @@ end
 
 
 # Helper function to construct the matrix A
+# See Algorithm 2 of the report
 function construct_A(solver)
     A = Array{Int64}(undef,solver.K,solver.n)
     for k in 1:solver.K
@@ -216,27 +227,32 @@ solver.A = construct_A(solver)
 
 println("A constraint matrix:")
 display(solver.A)
-print("\n\n")
+print("\n")
 
 solver.Full_mat = construct_full_matrix(solver)
 
 println("Full matrix:")
 display(solver.Full_mat)
-print("\n\n")
+print("\n")
 
-# function primal_function(solver, actual_x)
-#     return actual_x' * solver.Q * actual_x .+ solver.q' * x
-# end
+solver.F = lu(solver.Full_mat)
 
-# Compute function value
-# f_val = primal_function(solver, previous_x)
+println("LU factorization:")
+display(solver.F)
+print("\n")
 
-# println("Primal function value: $f_val")
-# print("\n\n")
+#=
+    Compute the function value of the Lagrangian relaxation given the current value of λ
+    and x
+        
+        L(x,λ) = x' Q x + q' x - λ' x
 
+=#
 function lagrangian_relaxation(solver, previous_x, previous_λ)
-    return previous_x' * solver.Q * previous_x .+ solver.q' * previous_x .- previous_λ' * previous_x
+    return (previous_x' * solver.Q * previous_x) .+ (solver.q' * previous_x) .- (previous_λ' * previous_x)
 end
+
+
 
 #=
     Solve the problem of 
@@ -296,10 +312,14 @@ end
 
     The third one employ the following:
 
-        λ_t = λ_{t-1} + H_{t-1}^{-1} \[ Ψ_t(λ_t) - η g_t \]
+        λ_t = λ_{t-1} - H_{t-1}^{-1} \[ Ψ_t(λ_t) - η g_t \]
+
+    The value of Ψ explode the second term of the latter update_rule. As a consequence 
+    the next value of λ becomes bigger and bigger. A minus sign instead constrain the 
+    value of λ to be smaller but at the same time reduce also the value of Ψ
 
 =#
-function compute_update_rule(solver, update_rule, H_t, Psi)
+function compute_update_rule(solver, update_rule, H_t, Ψ)
     
     if update_rule == 1
 
@@ -322,57 +342,36 @@ function compute_update_rule(solver, update_rule, H_t, Psi)
         # Replace all the NaN values with 0.0 to avoid NaN values in the iterates
         replace!(G_t, NaN => 0.0)
 
-        λ = solver.λ + solver.η * G_t * solver.grads[:,end]
+        λ = solver.λ + (solver.η * G_t * solver.grads[:,end])
         
     elseif update_rule == 2
 
-        # Average of gradients
-        avg_gradient = Vector{Float64}()
+        # Sum the latter subgradient found
+        solver.avg_gradient .+= solver.grads[:, end]
 
-        for row in eachrow(solver.grads)
+        # Average the row sum of the gradient based on the current iteration in a new variable
+        avg_gradient_copy = solver.avg_gradient ./ solver.iteration
 
-            total = sum(row)
-
-            push!(avg_gradient, total / solver.iteration )
-        
-        end
-
-        λ = solver.iteration * solver.η * (- H_t^(-1) * avg_gradient)
+        λ = solver.iteration * solver.η * (- H_t^(-1) * avg_gradient_copy)
 
     else
 
-        val = Psi .- (solver.η .* solver.grads[:,end])
+        val = Ψ .- (solver.η * solver.grads[:,end])
 
         update_part = H_t^(-1) * val
 
-        λ = solver.λ + update_part
+        # Minus needed: constrain λ to be smaller, otherwise the Ψ term explode the value of λ
+        λ = solver.λ - update_part
 
     end
 
     λ = max.(0, λ)
 
+    println("Updated λ")
+    display(λ)
+    print("\n")
+
     return λ
-
-end
-
-
-function check_duality_gap(Primals, Duals, solver)
-    
-    if isempty(Primals) || isempty(Duals)
-        return false
-    end
-
-    duality_gap = (Primals[end] - Duals[end])[1]
-
-    println("Duality gap:")
-    display(duality_gap)
-    print("\n\n")
-
-    if abs(duality_gap) < solver.ϵ
-        return true
-    else
-        return false
-    end 
 
 end
 
@@ -391,7 +390,9 @@ function check_λ_norm(solver, current_λ, previous_λ)
 
     println("Distance between λ's")
     display(distance)
-    print("\n\n")
+    print("\n")
+
+    push!(solver.λ_distances, distance)
 
     if distance <= solver.ϵ
         # We should exit the loop
@@ -429,19 +430,20 @@ end
 =#  
 function my_ADAGRAD(solver, update_rule)
 
-    solver.iteration = 1
+    solver.iteration = 0
 
     while solver.iteration < solver.max_iter
-       
+
+        solver.iteration += 1
+
+        push!(solver.num_iterations, solver.iteration)
+
+        solver.η = 1 / solver.iteration
+
         previous_λ = solver.λ
 
-        L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
-
-        println("Lagrangian relaxation value: $(L_val[1])")
-        print("\n\n")
-
         #= 
-        Compute subgradient of \psi (check report for derivation)
+        Compute subgradient of ϕ (check report for derivation)
         The subgradient is given by the derivative of the Lagrangian function w.r.t. λ
             
             ∇_λ (x_{star}) ( x_{star} * Q * x_{star} + q * x_{star} - λ * x_{star} )
@@ -454,25 +456,22 @@ function my_ADAGRAD(solver, update_rule)
         which is always differentiable since it is an hyperplane
         =#
         subgrad = get_grad(solver)
-        # subgrad = solver.x
-
-        println("Subgradient:")
-        display(subgrad)
-        print("\n\n")
 
         # Store subgradient in matrix
         solver.grads = [solver.grads subgrad]
         
         # Solution of lagrangian_relaxation of problem 2.4 (see report)
+        # Instatiate a copy for storing the s_t solution
         s_t = Vector{Float64}()
 
-        for row in eachrow(solver.grads)
-            sum = 0
-            for item in row
-                sum += item^2
-            end
-            push!(s_t, sqrt(sum))
-        end
+        # Accumulate the squared summation into solver.s_t structure
+        solver.s_t .+= subgrad.^2
+
+        # Create a copy of solver.s_t (avoid modifying the original one)
+        s_t = solver.s_t 
+
+        # Vectorize s_t applying the √ to each element
+        s_t = vec(sqrt.(s_t))
 
         # Create diagonal matrix H_t
         # Create diagonal matrix starting from s_t 
@@ -491,19 +490,7 @@ function my_ADAGRAD(solver, update_rule)
             ⟨ x, A*y ⟩
         the result A*y is not stored and this allow for a memory saving
         =#   
-        Psi = 0.5 .* dot(previous_λ, H_t, previous_λ)
-
-        part_one = H_t * previous_λ
-
-        println("Part one:")
-        display(part_one)
-        print("\n\n")
-
-        part_two = dot(previous_λ, part_one)
-
-        println("Totale")
-        display(part_two)
-        print("\n\n")
+        Ψ = 0.5 * dot(previous_λ, H_t, previous_λ)
 
         o = ones((solver.K,1))
 
@@ -511,24 +498,32 @@ function my_ADAGRAD(solver, update_rule)
 
         b = vcat(diff, o)
 
-        x_mu = solver.Full_mat \ b 
+        # The backslash operator solve the linear system with the most appropriate factorization
+        # x_μ = solver.Full_mat \ b 
 
-        solver.x, mu = x_mu[1:solver.n] , x_mu[solver.n + 1 : solver.n + solver.K] #solve_lagrangian_relaxation(solver)
+        x_μ = solver.F \ b
+        
+        # In the general case, the most appropriate factorization in this particular case is the 
+        # LU factorization with partial pivoting, which can be applied to every rectangular matrix 
+        # is stable since only in the worst case suffer from numerical instability
+        
+        solver.x, μ = x_μ[1:solver.n] , x_μ[solver.n + 1 : solver.n + solver.K] #solve_lagrangian_relaxation(solver)
 
-        # if all(x -> x > 0, solver.x)
         println("x value:")
         display(solver.x)
-        print("\n\n")
-        # end
+        print("\n")
     
         #=
         Compute the update rule for the lagrangian multipliers λ: can use 
         one among the three showed, then soft threshold the result
         =#
-        solver.λ = compute_update_rule(solver ,update_rule, H_t, Psi)
+        solver.λ = compute_update_rule(solver ,update_rule, H_t, Ψ)
 
-        # Storing current iteration
-        push!(solver.num_iterations, solver.iteration)
+        # Compute Lagrangian function value
+        L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
+
+        println("Lagrangian relaxation value: $(L_val[1])")
+        print("\n")
 
         # Storing current relaxation value
         push!(solver.relaxation_values, L_val[1])
@@ -544,12 +539,6 @@ function my_ADAGRAD(solver, update_rule)
             break
         end
 
-        solver.iteration += 1
-
-        push!(solver.num_iterations, solver.iteration)
-
-        solver.η = 1 / solver.iteration
-
     end
 
     return solver.x, solver.λ
@@ -561,17 +550,17 @@ optimal_x, optimal_λ = my_ADAGRAD(solver, 2)
 
 println("Optimal x found:")
 display(optimal_x)
-print("\n\n")
+print("\n")
 
 println("Optimal λ found:")
 display(optimal_λ)
-print("\n\n")
+print("\n")
 
 optimal_dual = lagrangian_relaxation(solver, optimal_x, optimal_λ)
 
 println("Value of the lagrangian function:")
 display(optimal_dual)
-print("\n\n\n\n\n\n")
+print("\n\n\n\n\n")
 
 
 
@@ -596,7 +585,7 @@ println("optimal value is ", problem.optval)
 
 println("Primal variables of problem:")
 display(x)
-print("\n\n")
+print("\n")
 
 println("Dual variables constraints")
 for constraint in problem.constraints
@@ -605,7 +594,7 @@ for constraint in problem.constraints
 end
 
 
-println("Duality gap between f( x* ) of Convex.jl and psi( λ )")
+println("Duality gap between f( x* ) of Convex.jl and ϕ( λ )")
 
 dual_gap = problem.optval[1] - optimal_dual[1]
 
@@ -613,11 +602,21 @@ display(dual_gap)
 print("\n")
 
 using Plots
+plotlyjs()
 
-gr()
-
-plt = plot(solver.num_iterations[2:solver.iteration-1], solver.relaxation_values[2:solver.iteration-1])
+plt = plot(solver.num_iterations, solver.relaxation_values, title="Iterations vs Lagrangian value", label=["Convergence"], lw=3)
+xlabel!("Iterations")
+ylabel!("Lagrangian value")
 
 display(plt);
 
-savefig(plt, "convergence.png")
+savefig(plt, "Convergence.png")
+
+
+plt2 = plot(solver.num_iterations, solver.λ_distances, title="Residual λ", label=["Residual λ"], lw=3)
+xlabel!("Iterations")
+ylabel!("Residual λ")
+
+display(plt2);
+
+savefig(plt2, "Residual.png")

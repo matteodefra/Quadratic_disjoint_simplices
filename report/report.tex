@@ -461,16 +461,44 @@ Using the {\bf KKT} (Karush-Kuhn Tucker) conditions, we can solve the problem di
     b
   \end{bmatrix}
 \end{gather*}
-a least squares problem that can be solved directly by computing the QR factorization of the matrix and save it for the next iterations. Hence, using the QR factorization and the orthogonality of the factorization matrix $\widehat{Q}$
+a linear system that can be solved directly and efficiently by computing the pivoted LU factorization of the matrix and save it for the next iterations. Hence, using the LU factorization:
+% a least squares problem that can be solved directly by computing the QR factorization of the matrix and save it for the next iterations. Hence, using the QR factorization and the orthogonality of the factorization matrix $\widehat{Q}$
+% \begin{gather*}
+%   \begin{bmatrix}
+%     Q & A^T \\[1ex]
+%     A & 0 
+%   \end{bmatrix}
+%   = 
+%   \widehat{Q} R 
+%   \boldsymbol{\implies}
+%   \widehat{Q} R 
+%   \begin{bmatrix}
+%     x \\[1ex]
+%     \mu
+%   \end{bmatrix}
+%   = 
+%   \begin{bmatrix}
+%     \lambda_t - q \\[1ex]
+%     b
+%   \end{bmatrix}
+%   \boldsymbol{\implies} 
+%   R 
+%   \begin{bmatrix}
+%     x \\[1ex]
+%     \mu
+%   \end{bmatrix} 
+%   = 
+%   \widehat{Q}^T 
+%   \begin{bmatrix}
+%     \lambda_t - q \\[1ex]
+%     b
+%   \end{bmatrix}
+% \end{gather*}
 \begin{gather*}
   \begin{bmatrix}
     Q & A^T \\[1ex]
     A & 0 
-  \end{bmatrix}
-  = 
-  \widehat{Q} R 
-  \boldsymbol{\implies}
-  \widehat{Q} R 
+  \end{bmatrix} 
   \begin{bmatrix}
     x \\[1ex]
     \mu
@@ -481,19 +509,31 @@ a least squares problem that can be solved directly by computing the QR factoriz
     b
   \end{bmatrix}
   \boldsymbol{\implies} 
-  R 
   \begin{bmatrix}
     x \\[1ex]
     \mu
-  \end{bmatrix} 
+  \end{bmatrix}
   = 
-  \widehat{Q}^T 
+  \begin{bmatrix}
+    Q & A^T \\[1ex]
+    A & 0 
+  \end{bmatrix}^{-1}
   \begin{bmatrix}
     \lambda_t - q \\[1ex]
     b
   \end{bmatrix}
+  \boldsymbol{\implies} 
+  \begin{bmatrix}
+    x \\[1ex]
+    \mu
+  \end{bmatrix}
+  = 
+  U^{-1} * \left(L^{-1} * \left(P * \begin{bmatrix}
+    \lambda_t - q \\[1ex]
+    b
+  \end{bmatrix}\right) \right)
 \end{gather*}
-which can be solved efficiently through backsubstitution.\\
+which can be solved efficiently through forward substitution (for the matrix $L$) and back substitution (for the matrix $U$) with a complexity of $O((n+K)^2)$.\\
 Lastly, regarding the stopping condition for the algorithm termination, we can check primal and dual variables. Follows that, given a certain value of tolerance $\epsilon$, we have %respectively for the primal and dual variables
 \begin{equation}
   \begin{gathered}
@@ -537,20 +577,15 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
   \end{minipage}
 \end{flushleft}
 
-
-
-% I think the problem of finding $x_t$ can be solved in the following way. Let's start by rewriting the equation update for the variable $x_t$:
-% \[
-%   x_t = \argmin_{x \in \mathcal{Y}} \{ x^T Q x + q x - \left\langle \lambda_t,x \right\rangle \}
-% \]
-% So we can identify the projection set, which is the line defined by the vector $x_{t-1}$ with the following condition $\mathcal{Y} = \{ \sum_{i \in I^k} x_i = 1 \}$.\\
-% So we have a basically an hyperplane in $\mathbb{R}^n$ whose defining vector $x$ forms $k$ separates unitary simplex.\\
-% By normalizing the vector $x$, we can obtain $u$. Now the projection can be rewritten as:
-% \[
-%   Proj_\mathcal{Y}(\tilde{x}) = (\tilde{x} \cdot u) \cdot u
-% \]
-% $u$ is our vector $x$ normalized which define the projection line. The value $\tilde{x}$ is the value obtained from the inner computation of the $\argmin$, which is then projected. The product between $\tilde{x}$ and $u$ forms a matrix $A$, which is the "transformation matrix" used 
-% to calculate the projected result.
+\section{Implementation}
+The ideas above described have been implemented using Julia. The provided package give the user the ability to provide the dimension of the problem $n$ and the number of simplices $K$ by input.\\
+Subsequently, the code is all automated and provide the creation of the matrix $Q \succeq 0$, $A$, the random sets $I^k$, the vector $q$ and all the required parameters. The resulting solutions 
+of the three different update rules are saved and compared with the optimal primal solution $f(x^*)$ found using the external package \textit{Convex.jl}.\\
+Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\epsilon$ value to check the $\lambda$ variation.\\
+All the values assumed by $x$, $\lambda$, each $\lambda$-norm, the number of iterations and the value of the Lagrangian function are saved at each iteration in order to display at the end a convergence plot 
+(\textit{iterations} vs \textit{Lagrangian value}) and a distance visualization plot of the $\lambda$-norm (\textit{iterations} vs $\lambda$\textit{-norms}).
+All the duality gaps and the resulting value of the Lagrangian functions are saved too in a dictionary and printed at the end to identify the best duality gap (among the different update rules) and 
+the function value.
 
 \newpage
 

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.8.7)  15 SEP 2021 19:47
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.8.7)  18 SEP 2021 11:24
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -791,27 +791,27 @@ l.177 \end{equation}
 l.177 \end{equation}
                     ] [2]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on input line 268.
- [3] [4] [5] [6] (/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.bbl) [7] [8] [9]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 713.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 713.
+ [3] [4] [5] [6] [7] (/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.bbl) [8] [9] [10]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 748.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 748.
  (/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 713.
-Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 713.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 713.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 748.
+Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 748.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 748.
  ) 
 Here is how much of TeX's memory you used:
- 23665 strings out of 483107
- 428430 string characters out of 5964631
- 685126 words of memory out of 5000000
- 38152 multiletter control sequences out of 15000+600000
+ 23668 strings out of 483107
+ 428452 string characters out of 5964631
+ 687126 words of memory out of 5000000
+ 38153 multiletter control sequences out of 15000+600000
  544879 words of font info for 71 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
  60i,18n,60p,992b,733s stack positions out of 5000i,500n,10000p,200000b,80000s
  </home/matteo/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/tcti1000.600pk></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtcsc10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm7.pfb>
-Output written on /home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.pdf (10 pages, 291858 bytes).
+Output written on /home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.pdf (11 pages, 294102 bytes).
 PDF statistics:
- 327 PDF objects out of 1000 (max. 8388607)
- 281 compressed objects within 3 object streams
- 55 named destinations out of 1000 (max. 500000)
- 117 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 336 PDF objects out of 1000 (max. 8388607)
+ 289 compressed objects within 3 object streams
+ 57 named destinations out of 1000 (max. 500000)
+ 125 words of extra memory for PDF output out of 10000 (max. 10000000)
 

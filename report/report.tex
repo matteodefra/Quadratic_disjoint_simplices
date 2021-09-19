@@ -10,7 +10,7 @@
 % \usepackage{algorithmic}
 \usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
 \usepackage[utf8]{inputenc}
-\usepackage[top=0.5cm, left=0.5cm, right=0.5cm, bottom=1.5cm]{geometry}
+% \usepackage[top=0.5cm, left=1.5cm, right=1.5cm, bottom=1.5cm]{geometry}
 \usepackage{accents}
 \usepackage{float}
 \usepackage{hyperref}
@@ -129,31 +129,7 @@ where $\mathcal{Y} = \{\sum_{i \in I^k} x_i = 1 \ \forall\, k \in K\}$. Hence th
 We are assuming that optimizing over the set $\mathcal{Y}$ can be done very easily.\\ 
 In the next section, we will briefly recall the properties of the \texttt{ADAGRAD} family of algorithms\cite{JMLR:v12:duchi11a}.% and analyze it in our problem setting.
 
-% Now, our problem reduced to solving the Lagrangian dual function relaxation 
-% \[
-%   \psi(\lambda,\mu) = \min_x \{ L(x;\lambda,\mu) : x \in \mathbb{R}^n \}
-% \]
-% which we know being surely concave. Hence the following optimization problem
-% \begin{equation}
-%   \begin{cases}
-%     \max_{\lambda,\mu}\  \psi(\lambda,\mu)  \\
-%     \text{subject to } \lambda \ge 0 
-%   \end{cases}
-%   \label{eqn:dual_problem}  
-% \end{equation}
-% In the next section, we will briefly recall the properties of the \texttt{ADAGRAD} family of algorithms\cite{JMLR:v12:duchi11a} and analyze it in our problem setting.
-
 \section{Deflected subgradient Analysis}
-% Deflected subgradient are a general method aimed to modify the direction of the update through a convex combination $\alpha \in \left[0,1\right]$ in order to have a $\left\langle d_k,d_{k+1} \right\rangle \ge 0$. In this way, we dampen the zig-zag behavior 
-% of the standard gradient descent and we exploit non differentiable settings. As summed up in \cite{Frangioni2017}, different variations of the subgradient method can be derived, based on the different choice of directions $d_k$, subgradient $g_k$ and their 
-% relative projections.\\
-% Also subgradient methods divide in two different categories: stepsize restricted rules, and deflection restricted rules.\\
-% One of the most popular subgradient methods is the \texttt{PRIMAL-DUAL} approach, where both stepsize and deflection are computed simultaneously through the Sample Average (SA) or the Weighted Average (WA). Both \cite{Frangioni2017} and \cite{JMLR:v12:duchi11a}
-% explore this method, originally mentioned in \cite{Nesterov2009}. In the first case, it is mentioned in the appendix A and we have a proof of convergence. In the second case, it is used directly to update the current value.\\
-% The PDSM (primal-dual subgradient method) is based on the assumption of having a proximal function inside the general update. This is reported in \cite{Frangioni2017} in Appendix A and also in \cite{JMLR:v12:duchi11a}, where the proximal function is directly 
-% used inside the update with a precise value.\\
-% The use of proximal functions is derived particurarly in \cite{JMLR:v12:duchi11a} in section 2, where boundaries for the proximal functions are obtained.
-
 % ADAGRAD ANALYSIS
 \subsection{\texttt{ADAGRAD} introduction}
 The projection rule of a point $y$ onto the constraint set $\mathcal{X}$ according to a positive semidefinite matrix $A$ amounts to:
@@ -251,9 +227,9 @@ Proofs can be found in Appendix F of \cite{JMLR:v12:duchi11a}.
 \end{proposition}
 \begin{proposition}
   Let the sequence $\{\lambda_t\}$ be defined by the update \eqref{eqn:composite-mirror-update}. For any $\lambda^* \in \mathcal{X}$
-  \begin{equation}
-    \sum_{t=1}^T \psi(\lambda_t) - \psi(\lambda^*) \le \frac{1}{\eta} B_{\Psi_1} (\lambda^*,\lambda_1) + \frac{1}{\eta} \sum_{t=1}^{T-1} \left[ B_{\Psi_{t+1}}(\lambda^*,\lambda_{t+1}) - B_{\Psi_t}(\lambda^*,\lambda_{t+1}) \right] + \frac{\eta}{2} \sum_{t=1}^T \| \psi'(\lambda_t) \|_{\Psi_t^*}^2
-  \end{equation}
+  \begin{align*}
+    \sum_{t=1}^T \psi(\lambda_t) - \psi(\lambda^*) \le \frac{1}{\eta} B_{\Psi_1} (\lambda^*,\lambda_1) + \frac{1}{\eta} \sum_{t=1}^{T-1} \left[ B_{\Psi_{t+1}}(\lambda^*,\lambda_{t+1}) - B_{\Psi_t}(\lambda^*,\lambda_{t+1}) \right] \\ + \frac{\eta}{2} \sum_{t=1}^T \| \psi'(\lambda_t) \|_{\Psi_t^*}^2
+  \end{align*}
 \end{proposition}
 The proximal term and the bregman divergence present in \eqref{eqn:primal-dual-update} and \eqref{eqn:composite-mirror-update} will be computed according to the subgradient matrix, in order to iteratively modify the update and thus adapting to the 
 geometry of the space.
@@ -264,8 +240,7 @@ geometry of the space.
 \subsection{Convergence Analysis}
 \label{sec:convergence}
 First of all, let us state that the convergence rate of \texttt{ADAGRAD} is the same of the Stochastic Gradient Descent (\texttt{SGD}), hence $O(1/\sqrt{T})$ but with a lower constant due to the use of $G$ matrix.\\
-The algorithm 1 reported in \cite{JMLR:v12:duchi11a} will be applied to our problem and is reported here:\\
-{\Large ??}
+The algorithm 1 reported in \cite{JMLR:v12:duchi11a} will be applied to our problem and is reported here:
 \begin{flushleft}
   \begin{minipage}{.7\textwidth}
     \begin{algorithm}[H]
@@ -290,15 +265,7 @@ The algorithm 1 reported in \cite{JMLR:v12:duchi11a} will be applied to our prob
     \end{algorithm}
   \end{minipage}
 \end{flushleft}
-% We should change the iterates $x$ with our iterates $\lambda$. In the following, we will prove the following provided that the iterates are the $\lambda$'s.\\
 The general convergence result of this algorithm for both the updates is reported in theorem 5 of the original paper. We will now report the theoretical analysis behind procedure \ref{alg:adagrad} and lastly modify the algorithm in order to match our problem settings.
-% \begin{theorem}
-%   Let the sequence $\{x_t\}$ be defined by algorithm \ref{alg:adagrad}. For $x_t$ generated using the update \eqref{eqn:primal-dual-update} with $\delta \ge \max_t \|g_t\|_\infty$, for any $x^* \in \mathcal{X}$
-%   \[ R_\phi(T) \le \frac{\delta}{\eta} \|x^*\|_2^2 + \frac{1}{\eta} \|x^*\|_\infty^2 \sum_{i=1}^d \|g_{1:T,i}\|_2 + \eta \sum_{i=1}^d \|g_{1:T,i}\|_2 \]
-%   For $x_t$ generated using the update \eqref{eqn:composite-mirror-update}, for any $x^* \in \mathcal{X}$
-%   \[ R_\phi(T) \le \frac{1}{2\eta} \max_{t \le T} \|x^* -x_t\|_\infty^2 \sum_{i=1}^d \|g_{1:T,i}\|_2 + \eta \sum_{i=1}^d \|g_{1:T,i}\|_2 \]
-%   \label{th:regrets}
-% \end{theorem}
 \begin{theorem}
   Let the sequence $\{\lambda_t\}$ be defined by algorithm \ref{alg:adagrad}. For $\lambda_t$ generated using the update \eqref{eqn:primal-dual-update} with $\delta \ge \max_t \|g_t\|_\infty$, for any $\lambda^* \in \mathcal{X}$
   \begin{equation} 
@@ -334,7 +301,7 @@ The upper bound on the gradient term for both the updates is taken from the \tex
 \end{lemma}
 To obtain a bound, we need to consider the terms consisting of the dual-norm of the subgradient in the bounds \eqref{eqn:pd-regret} and \eqref{eqn:cm-regret}, which is $\|\psi'(\lambda_t)\|_{\Psi_t^*}^2$. When we choose $\Psi_t(\lambda) = \left\langle \lambda,(\delta I + diag(s_t)) \lambda \right\rangle$, the associated dual norm is
 \[ \| g \|_{\Psi_t^*}^2 = \left\langle g,(\delta I + diag(s_t))^{-1} g \right\rangle\]
-Following from the definition of $s_t$ in \ref{alg:adagrad}, we clearly have $\|\psi'(\lambda_t)\|_{\Psi_t^*}^2 \le \left\langle g_t, diag(s_t)^{-1} g_t \right\rangle$. Thus we have the following implication
+Following from the definition of $s_t$ in \ref{alg:adagrad}, we have $\|\psi'(\lambda_t)\|_{\Psi_t^*}^2 \le \left\langle g_t, diag(s_t)^{-1} g_t \right\rangle$. Thus we have the following implication
 \[ \sum_{t=1}^T \|\psi'(\lambda_t)\|_{\Psi_t^*}^2 \le \sum_{i=1}^d \|g_{1:T,i}\|_2 \]
 which prove the regret term \circled{2}.\\
 %QUIQUI
@@ -401,7 +368,7 @@ Regarding the minimum, this can be simply solved by differentiating the function
     \tag{Update \eqref{eqn:standard-rule}} \\
     \hat{\lambda}_{t+1} = -H_t^{-1} t\, \eta\, \overline{g}_t
     \tag{Update \eqref{eqn:primal-dual-update}} \\
-    \hat{\lambda}_{t+1} = \lambda_t + H_t^{-1} \left[ \Psi(\lambda_t) - \eta\, g_t \right] 
+    \hat{\lambda}_{t+1} = \lambda_t + \eta\, H_t^{-1}\, g_t 
     \tag{Update \eqref{eqn:composite-mirror-update}}
   \end{align}
 \end{subequations}
@@ -445,12 +412,12 @@ Using the {\bf KKT} (Karush-Kuhn Tucker) conditions, we can solve the problem di
     Q x + q - \lambda_t + \mu A = 0 \\
     A x - b = 0
   \end{cases}
-  \implies 
+  \boldsymbol{\implies} 
   \begin{cases}
     Q x + \mu A = \lambda_t - q \\
     A x \quad \quad \:\ \,= b 
   \end{cases}
-  \boldsymbol{\implies} 
+  \boldsymbol{\implies} \\ 
   \begin{bmatrix}
     Q & A^T \\[1ex]
     A & 0 
@@ -466,38 +433,6 @@ Using the {\bf KKT} (Karush-Kuhn Tucker) conditions, we can solve the problem di
   \end{bmatrix}
 \end{gather*}
 a linear system that can be solved directly and efficiently by computing the pivoted LU factorization of the matrix and save it for the next iterations. Hence, using the LU factorization:
-% a least squares problem that can be solved directly by computing the QR factorization of the matrix and save it for the next iterations. Hence, using the QR factorization and the orthogonality of the factorization matrix $\widehat{Q}$
-% \begin{gather*}
-%   \begin{bmatrix}
-%     Q & A^T \\[1ex]
-%     A & 0 
-%   \end{bmatrix}
-%   = 
-%   \widehat{Q} R 
-%   \boldsymbol{\implies}
-%   \widehat{Q} R 
-%   \begin{bmatrix}
-%     x \\[1ex]
-%     \mu
-%   \end{bmatrix}
-%   = 
-%   \begin{bmatrix}
-%     \lambda_t - q \\[1ex]
-%     b
-%   \end{bmatrix}
-%   \boldsymbol{\implies} 
-%   R 
-%   \begin{bmatrix}
-%     x \\[1ex]
-%     \mu
-%   \end{bmatrix} 
-%   = 
-%   \widehat{Q}^T 
-%   \begin{bmatrix}
-%     \lambda_t - q \\[1ex]
-%     b
-%   \end{bmatrix}
-% \end{gather*}
 \begin{gather*}
   \begin{bmatrix}
     Q & A^T \\[1ex]
@@ -526,7 +461,7 @@ a linear system that can be solved directly and efficiently by computing the piv
     \lambda_t - q \\[1ex]
     b
   \end{bmatrix}
-  \boldsymbol{\implies} 
+  \boldsymbol{\implies} \\
   \begin{bmatrix}
     x \\[1ex]
     \mu

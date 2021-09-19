@@ -120,7 +120,7 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 1500
+max_iter = 2000
 
 # Initialize ϵ
 ϵ = 1e-5

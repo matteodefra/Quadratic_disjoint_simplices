@@ -69,7 +69,7 @@ end
 
     The third one employ the following:
 
-        λ_t = λ_{t-1} - H_{t-1}^{-1} \[ Ψ_t(λ_t) - η g_t \]
+        λ_t = λ_{t-1} + η H_{t-1}^{-1} g_t
 
     The value of Ψ explode the second term of the latter update_rule. As a consequence 
     the next value of λ becomes bigger and bigger. A minus sign instead constrain the 
@@ -88,7 +88,7 @@ function compute_update_rule(solver, H_t)
 
         pow = -0.5
 
-        # Create a copy for Diagonal operation and exponentiation
+        # Create a copy for Diagonal operation and exponentiation (apply abs for possible errors with negative values)
         G_t = abs.(solver.G_t)
 
         # Apply exponentiation
@@ -343,7 +343,7 @@ function my_ADAGRAD(solver)
     print("\n")
     print("Iterations: $(solver.iteration)\tTotal time: $(round(sum(solver.timings), digits=6))\n")
 
-    CSV.write("logs/results_rule=$(solver.update_formula).csv", df)
+    CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula).csv", df)
 
     return solver
 

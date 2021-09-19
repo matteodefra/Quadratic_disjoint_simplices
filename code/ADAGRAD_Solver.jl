@@ -3,6 +3,9 @@ module ADAGRAD_Solver
 using Random
 using LinearAlgebra
 using ForwardDiff
+using Printf
+using DataFrames
+using CSV
 
 export Solver
 
@@ -29,10 +32,13 @@ mutable struct Solver
     x_values :: Array{Float64}
     λ_values :: Array{Float64}
     λ_distances :: Vector{Float64}
+    x_distances :: Vector{Float64}
+    timings :: Vector{Float64}
     update_formula :: Int
     Full_mat :: Matrix{Float64}
-    F :: LU
+    F :: Any
     A :: Array{Int64}
+    Off_the_shelf_primal :: Float64
 end
 
 
@@ -46,68 +52,6 @@ end
 function lagrangian_relaxation(solver, previous_x, previous_λ)
     return (previous_x' * solver.Q * previous_x) .+ (solver.q' * previous_x) .- (previous_λ' * previous_x)
 end
-
-
-#=
-    Solve the problem of 
-
-        x_t = \argmin_{x ∈ X} \{ x^T * Q * x + q * x - λ_{t-1} * x \}
-    
-    where X is the constraint set of the disjoint simplices (eliding non negativity 
-    constraint, since it's included in the relaxation).
-    Being only linear constraint, this problem can be easily solved in O((n+K)^2) time,
-    using the LU factorization of the matrix through forward and back substitution
-
-    First of all multiply the permutation matrix for the last term 
-            
-        c = P * [ λ_{t-1} - q, b ]
-
-    Then use forward substitution to solve the linear system and find the vector d
-
-        L * d = c 
-
-    Finally use back substitution to solve the linear system 
-
-        U * [x μ] = d 
-
-    and obtain the result.
-    Returns a tuple with the value x and μ
-=#
-function solve_lagrangian_relaxation(solver)
-
-    # Create vector b = [λ_{t-1} - q, b]
-    o = ones((solver.K,1))
-
-    diff = solver.λ - solver.q
-
-    b = vcat(diff, o)
-
-    # Find vector c using the Permutation matrix
-    c = solver.F.P * b
-
-    dim = solver.n + solver.K
-
-    # Use forward substitution to find vector 
-    d = zeros((dim, 1))
-
-    d[1] = c[1] / solver.F.L[1,1]
-    for i = 2:+1:dim
-        s = sum( solver.F.L[i,j]*d[j] for j=1:i-1 )
-        d[i] = ( c[i] - s ) / solver.F.L[i,i]
-    end
-
-    # Then use back substitution to find [x μ]
-    x_μ = zeros((dim,1))
-
-    x_μ[dim] = d[dim]/solver.F.U[dim, dim]
-    for i = dim-1:-1:1
-        s = sum( solver.F.U[i,j]*x_μ[j] for j=i+1:dim )
-        x_μ[i] = ( d[i] - s ) / solver.F.U[i,i]
-    end
-    
-    return x_μ[1:solver.n] , x_μ[solver.n + 1 : dim]
-end
-
 
 #= 
 
@@ -132,7 +76,7 @@ end
     value of λ to be smaller but at the same time reduce also the value of Ψ
 
 =#
-function compute_update_rule(solver, H_t, Ψ)
+function compute_update_rule(solver, H_t)
     
     if solver.update_formula == 1
 
@@ -167,12 +111,10 @@ function compute_update_rule(solver, H_t, Ψ)
 
     else
 
-        val = Ψ .- (solver.η * solver.grads[:,end])
+        update_part = solver.η * H_t^(-1) * solver.grads[:,end]
 
-        update_part = H_t^(-1) * val
-
-        # Minus needed: constrain λ to be smaller, otherwise the Ψ term explode the value of λ
-        λ = solver.λ - update_part
+        # Plus needed: constrain λ to be bigger, we are maximizing the dual function
+        λ = solver.λ + update_part
 
     end
 
@@ -207,7 +149,10 @@ function check_λ_norm(solver, current_λ, previous_λ)
 
     if distance <= solver.ϵ
         # We should exit the loop
-        println("Distance between λ's")
+        # Log result of the last iteration
+        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] (solver.Off_the_shelf_primal - solver.relaxation_values[end])
+
+        println("\nOptimal distance between λ's found:")
         display(distance)
         print("\n")
         return true
@@ -236,6 +181,27 @@ end
 
 
 #=
+    Compute 
+
+        \| x_t - x_{t-1} \|_2
+    
+    for the sake of log and visualization
+=#
+function x_norm(previous_x, current_x)
+
+    res = current_x .- previous_x
+
+    distance = norm(res)
+
+    # println("Distance between λ's")
+    # display(distance)
+    # print("\n")
+
+    return distance
+
+end
+
+#=
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
     Takes as parameters:
@@ -244,9 +210,21 @@ end
 =#  
 function my_ADAGRAD(solver)
 
+    # Log result of each iteration
+    print("Iteration\tTime\t\tL value\t\tx_norm\t\tλ_norm\t\tcurrent gap\n\n")
+
+    df = DataFrame( Iteration = Int[],
+                    Time = Float64[],
+                    LagrangianValue = Float64[],
+                    x_norm_residual = Float64[],
+                    λ_norm_residual = Any[],
+                    Dual_gap = Float64[] )
+
     solver.iteration = 0
 
     while solver.iteration < solver.max_iter
+
+        starting_time = time()
 
         solver.iteration += 1
 
@@ -255,6 +233,8 @@ function my_ADAGRAD(solver)
         solver.η = 1 / solver.iteration
 
         previous_λ = solver.λ
+
+        previous_x = solver.x
 
         #= 
         Compute subgradient of ϕ (check report for derivation)
@@ -295,18 +275,21 @@ function my_ADAGRAD(solver)
 
         # Sum them (hessian approximation)
         H_t = δ_Id + mat
+       
+        # Create vector b = [λ_{t-1} - q, b]
+        o = ones((solver.K,1))
+
+        diff = solver.λ - solver.q
+
+        b = vcat(diff, o)
 
         #= 
-        Proximal term computation: dot(x,A,y) faster way of computing 
-            ⟨ x, A*y ⟩
-        the result A*y is not stored and this allow for a memory saving
-        =#   
-        Ψ = 0.5 * dot(previous_λ, H_t, previous_λ)
-       
-        # In the general case, the most appropriate factorization in this particular case is the 
-        # LU factorization with partial pivoting, which can be applied to every rectangular matrix 
-        # is stable since only in the worst case suffer from numerical instability
-        solver.x, μ = solve_lagrangian_relaxation(solver)
+            Solve linear system efficiently using \ of Julia: will automatically use techniques like 
+            backward and forward substitution to optimize the computation    
+        =# 
+        x_μ = solver.F \ b
+
+        solver.x, μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
         # println("x value:")
         # display(solver.x)
@@ -316,7 +299,7 @@ function my_ADAGRAD(solver)
         Compute the update rule for the lagrangian multipliers λ: can use 
         one among the three showed, then soft threshold the result
         =#
-        solver.λ = compute_update_rule(solver, H_t, Ψ)
+        solver.λ = compute_update_rule(solver, H_t)
 
         # Compute Lagrangian function value
         L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
@@ -333,12 +316,34 @@ function my_ADAGRAD(solver)
         # Storing λ_{solver.iteration}
         solver.λ_values = [solver.λ_values solver.λ]
 
+        # Compute \| x_t - x_{t-1} \|_2 and save it
+        push!(solver.x_distances, x_norm(previous_x, solver.x))
+
+        # Store timing result of this iteration
+        finish_time = time()    
+
+        time_step = finish_time - starting_time
+         
+        push!(solver.timings, time_step)
+
         if check_λ_norm(solver, solver.λ, previous_λ)
-            println("Optimal λ found")
+            # Add last row
+            push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], "OPT", (solver.Off_the_shelf_primal - solver.relaxation_values[end]) ])
             break
         end
 
+        # Log result of the current iteration
+        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] (solver.Off_the_shelf_primal - solver.relaxation_values[end])
+       
+        # Add to DataFrame to save results
+        push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], (solver.Off_the_shelf_primal - solver.relaxation_values[end]) ])
+
     end
+
+    print("\n")
+    print("Iterations: $(solver.iteration)\tTotal time: $(round(sum(solver.timings), digits=6))\n")
+
+    CSV.write("logs/results_rule=$(solver.update_formula).csv", df)
 
     return solver
 

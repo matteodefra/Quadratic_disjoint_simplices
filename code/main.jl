@@ -5,7 +5,6 @@ include("./ConvexSolution.jl")
 using LinearAlgebra
 using Random
 using Convex
-using BenchmarkTools
 using .Utils
 using .ADAGRAD_Solver
 # Compute the solution of Convex.jl
@@ -79,6 +78,13 @@ print("\n")
 # Initialize x iterates to zero
 x = randn((n,1))
 
+# Feasible x:
+for set in I_K
+    for val in set
+        x[val] = 1 / length(set)
+    end
+end
+
 println("Starting x:")
 display(x)
 print("\n")
@@ -114,10 +120,10 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 300
+max_iter = 1500
 
 # Initialize ϵ
-ϵ = 1e-4
+ϵ = 1e-5
 
 A = Utils.construct_A(K, n, I_K)
 
@@ -131,10 +137,36 @@ println("Full matrix:")
 display(Full_mat)
 print("\n")
 
-F = lu(Full_mat)
+#= 
+    Let Julia automatically determine the best factorization:
+        
+        Cholesky ( if Full_mat ≻ 0 )
+        LDL ( if Q=Q^T )
+        pivoted LU ( otherwise )
+=#
+# F = lu(Full_mat)
+F = factorize(Full_mat)
 
-println("LU factorization:")
+println("Factorization:")
 display(F)
+print("\n")
+
+#------------------------------------------------------#
+#----    Use Convex.jl to compute primal solution   ---#
+#------------------------------------------------------#
+
+convex_sol = ConvexSolution.ConvexSol(
+    n,
+    Variable(n),
+    A,
+    Q,
+    q
+)
+
+convex_sol = ConvexSolution.compute_solution(convex_sol)
+
+println("Optimal value:")
+display(convex_sol.opt_val)
 print("\n")
 
 #------------------------------------------------------#
@@ -154,10 +186,13 @@ solver_rule1 = ADAGRAD_Solver.Solver(
     Array{Float64}(undef, n, 0), # x_values
     Array{Float64}(undef, n, 0), # λ_values
     Vector{Float64}(), # λ_distances
+    Vector{Float64}(), # x_distances
+    Vector{Float64}(), # timings
     1, # update_rule
     Full_mat, # Full matrix KKT
-    F, # LU factorization
-    A # Constraint matrix
+    F, # Best factorization
+    A, # Constraint matrix
+    convex_sol.opt_val # Primal optimal value
 )
 
 solver_rule2 = ADAGRAD_Solver.Solver(
@@ -171,10 +206,13 @@ solver_rule2 = ADAGRAD_Solver.Solver(
     Array{Float64}(undef, n, 0), # x_values
     Array{Float64}(undef, n, 0), # λ_values
     Vector{Float64}(), # λ_distances
+    Vector{Float64}(), # x_distances
+    Vector{Float64}(), # timings
     2, # update_rule
     Full_mat, # Full matrix KKT
-    F, # LU factorization
-    A # Constraint matrix
+    F, # Best factorization
+    A, # Constraint matrix
+    convex_sol.opt_val # Primal optimal value
 )
 
 solver_rule3 = ADAGRAD_Solver.Solver(
@@ -188,29 +226,14 @@ solver_rule3 = ADAGRAD_Solver.Solver(
     Array{Float64}(undef, n, 0), # x_values
     Array{Float64}(undef, n, 0), # λ_values
     Vector{Float64}(), # λ_distances
+    Vector{Float64}(), # x_distance
+    Vector{Float64}(), # timings
     3, # update_rule
     Full_mat, # Full matrix KKT
-    F, # LU factorization
-    A # Constraint matrix
+    F, # Best factorization
+    A, # Constraint matrix
+    convex_sol.opt_val # Primal optimal value
 )
-
-#------------------------------------------------------#
-#----    Use Convex.jl to compute primal solution   ---#
-#------------------------------------------------------#
-
-convex_sol = ConvexSolution.ConvexSol(
-    n,
-    Variable(n),
-    A,
-    Q,
-    q
-)
-
-convex_sol = ConvexSolution.compute_solution(convex_sol)
-
-println("Optimal value:")
-display(convex_sol.opt_val)
-print("\n")
 
 #------------------------------------------------------#
 #--------     Calculate custom solution     -----------#
@@ -323,9 +346,10 @@ L_values["Rule 3"] = optimal_dual
 
 print("\n\n")
 
-println("Gaps and Lagrangian values")
+println("Gaps:")
 display(gaps)
 print("\n")
+println("Lagrangian values:")
 display(L_values)
 
 #------------------------------------------------------#
@@ -349,7 +373,7 @@ end
 
 for i=1:1:3
 
-    plt2 = plot(solvers[i].num_iterations, solvers[i].λ_distances, title="Residual λ update=$(solvers[i].update_formula)", label=["Residual λ"], lw=3)
+    plt2 = plot(solvers[i].num_iterations, solvers[i].λ_distances, title="Residual λ update=$(solvers[i].update_formula)", label=["Residual λ"], lw=3, yaxis=:log, xaxis=:log)
     xlabel!("Iterations")
     ylabel!("Residual λ")
 

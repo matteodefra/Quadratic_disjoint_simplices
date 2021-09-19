@@ -32,6 +32,9 @@
 
 \setlength\parindent{0pt}
 
+\setlength{\tabcolsep}{20pt}
+\renewcommand{\arraystretch}{1.5}
+
 \newcommand{\myrule} [3] []{
     \begin{center}
         \begin{tikzpicture}
@@ -60,6 +63,7 @@
 \DeclareMathOperator*{\argmax}{arg\,max}
 \DeclareMathOperator*{\argmin}{arg\,min}
 
+\newcolumntype{L}{>{$}l<{$}} % math-mode version of "l" column type
 
 \title{Project Non-ML 5}
 \author{Matteo De Francesco}
@@ -565,7 +569,7 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
             \State $g_{1:t} \gets \left[ g_{1:t-1}\ g_t \right]$\Comment{Store subgradient}
             \State $s_{t,i} \gets \| g_{1:t,i} \|_2$\Comment{Solution of the problem \ref{sec:convergence}}
             \State $H_t = \gets \delta \mathit{I} + diag(s_t)$
-            \State $\Psi_t(\lambda_{t-1}) \gets \frac{1}{2} \left\langle \lambda_{t-1},H_t \lambda_{t-1} \right\rangle$  
+            % \State $\Psi_t(\lambda_{t-1}) \gets \frac{1}{2} \left\langle \lambda_{t-1},H_t \lambda_{t-1} \right\rangle$  
             \State $x_t = \argmin_{x \in \mathcal{Y}} \left\lbrace x^T Q x + q x - \left\langle \lambda_{t-1},x \right\rangle \right\rbrace$\Comment{Solution of Lagrangian relaxation}
             \State $\hat{\lambda}_t =$ one among $\eqref{eqn:updates}$
             \State $\lambda_t = P_\mathcal{X}(\hat{\lambda}_t)$ 
@@ -585,7 +589,26 @@ Also, there are some hyperparameters which can be modified by the user inside \t
 All the values assumed by $x$, $\lambda$, each $\lambda$-norm, the number of iterations and the value of the Lagrangian function are saved at each iteration in order to display at the end a convergence plot 
 (\textit{iterations} vs \textit{Lagrangian value}) and a distance visualization plot of the $\lambda$-norm (\textit{iterations} vs $\lambda$\textit{-norms}).
 All the duality gaps and the resulting value of the Lagrangian functions are saved too in a dictionary and printed at the end to identify the best duality gap (among the different update rules) and 
-the function value.
+the function value.\\
+During the execution of the algorithm, the initial parameters are showed, as well as the result of \textit{Convex.jl}. Then, the customized \texttt{ADAGRAD} starts with the three different variations, 
+showing at each iteration the time elapsed, the $\mathcal{L}$ value, both the $x$ norm and the $\lambda$ one, and finally the dual gap.\\
+All the iteration values are saved in a Dataframe and logged into a \textit{csv} file in order to inspect the results.\\[1em]
+In order to test the program on different problem dimensions, we have chosen different sizes to perform our experiments, in order to have a "grid search" of different experimentations.
+
+\begin{center}
+  \begin{tabular}[H]{| L | L | L | L |}
+    \hline
+    \mathbf{n} & \mathbf{K} & \mathbf{\epsilon} & \mathbf{max\_iter} \\
+    \hline
+    10 & \left[3,5,7\right] & 10^{-5} & 1500 \\
+    \hline
+    100 & \left[25,50,75\right] & 10^{-5} & 1500 \\
+    \hline
+    500 & \left[125,250,375\right] & 10^{-5} & 1500 \\
+    \hline
+  \end{tabular}  
+\end{center}
+
 
 \newpage
 
@@ -682,7 +705,7 @@ Also in this case, to find the $\argmin$ we derive the update formula and set it
 \begin{align*}
   \frac{\partial}{\partial \lambda} \eta \left\langle g_t,\lambda \right\rangle + \frac{\partial}{\partial \lambda} B_{\Psi_t} (\lambda,\lambda_t) = 0 \\ 
   \eta\, g_t + \frac{\partial}{\partial \lambda} \left[ \Psi_t(\lambda) - \Psi_t(\lambda_t) - \left\langle \nabla \Psi_t(\lambda_t),\lambda-\lambda_t \right\rangle \right] = 0 \\
-  \eta\, g_t + H_t\, \lambda - \Psi_t(\lambda_t) - \frac{\partial}{\partial \lambda} \left\langle \nabla \Psi_t(\lambda_t),\lambda-\lambda_t \right\rangle = 0
+  \eta\, g_t + H_t\, \lambda - \frac{\partial}{\partial \lambda} \left\langle \nabla \Psi_t(\lambda_t),\lambda-\lambda_t \right\rangle = 0
 \end{align*}
 Considering the first term of the scalar product, we have to evaluate the first order taylor model of the proximal function $\Psi_t$ at the
 known quantity $\lambda_t$. It is easy to see that by using the derivation in the first paragraph and the fact that $H_t$ is diagonal
@@ -714,8 +737,8 @@ And so is easy to see that
 \end{align*} 
 And finally putting this into the main problem, we get:
 \begin{align*}
-  \eta\, g_t + H_t\, \lambda - \Psi_t(\lambda_t) - H_t \lambda_t = 0 \quad \implies \\
-  \lambda = - H_t^{-1} \left[ \eta\, g_t - \Psi(\lambda_t) - H_t \lambda_t \right] = \lambda_t + H_t^{-1} \left[ \Psi(\lambda_t) - \eta\, g_t \right] 
+  \eta\, g_t + H_t\, \lambda - H_t \lambda_t = 0 \quad \implies H_t\, \lambda = H_t \lambda_t - \eta\, g_t \\
+  \lambda = H_t^{-1} \left[ H_t \lambda_t - \eta\, g_t \right] = \lambda_t - \eta\, H_t^{-1}\, g_t
 \end{align*}
 
 

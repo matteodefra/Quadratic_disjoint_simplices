@@ -96,11 +96,12 @@ println("Starting λs:")
 display(λ)
 print("\n")
 
-# Create random matrix A
+# Create random matrix A_help
 A_help = randn(Float64 ,n, n)
 
-# Multiply A with its transpose in order always positive definite condition
+# Multiply A with its transpose in order to have always positive semidefinite condition
 Q = A_help' * A_help
+# Q = A_help
 
 println("Q matrix:")
 display(Q)
@@ -120,7 +121,7 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 2000
+max_iter = 10000
 
 # Initialize ϵ
 ϵ = 1e-5
@@ -141,10 +142,20 @@ print("\n")
     Let Julia automatically determine the best factorization:
         
         Cholesky ( if Full_mat ≻ 0 )
-        LDL ( if Q=Q^T )
+        Bunch-Kaufman ( if Q=Q^T )
         pivoted LU ( otherwise )
 =#
-# F = lu(Full_mat)
+global F
+
+try 
+    global F = cholesky!(Hermitian(Full_mat))
+catch y
+    if isa(y, PosDefException)
+        println("Matrix is not positive definite")
+    end
+end
+
+# Lu factorization (unless Full_mat is symmetric)
 F = factorize(Full_mat)
 
 println("Factorization:")
@@ -188,6 +199,7 @@ solver_rule1 = ADAGRAD_Solver.Solver(
     Vector{Float64}(), # λ_distances
     Vector{Float64}(), # x_distances
     Vector{Float64}(), # timings
+    Vector{Float64}(), # gaps
     1, # update_rule
     Full_mat, # Full matrix KKT
     F, # Best factorization
@@ -208,6 +220,7 @@ solver_rule2 = ADAGRAD_Solver.Solver(
     Vector{Float64}(), # λ_distances
     Vector{Float64}(), # x_distances
     Vector{Float64}(), # timings
+    Vector{Float64}(), # gaps
     2, # update_rule
     Full_mat, # Full matrix KKT
     F, # Best factorization
@@ -228,6 +241,7 @@ solver_rule3 = ADAGRAD_Solver.Solver(
     Vector{Float64}(), # λ_distances
     Vector{Float64}(), # x_distance
     Vector{Float64}(), # timings
+    Vector{Float64}(), # gaps
     3, # update_rule
     Full_mat, # Full matrix KKT
     F, # Best factorization
@@ -356,27 +370,52 @@ display(L_values)
 #-----------     Plotting utilities     ---------------#
 #------------------------------------------------------#
 
+# using DataFrames
 using Plots
-plotlyjs()
+
+Plots.theme(:wong)
+
+plotlyjs(size=(600,450))
 
 solvers = [ solver_rule1, solver_rule2, solver_rule3 ]
 
 for i=1:1:3
 
-    plt = plot(solvers[i].num_iterations, solvers[i].relaxation_values, title="Iterations vs Lagrangian value update=$(solvers[i].update_formula)", label=["Convergence"], lw=3)
+    plt = plot( solvers[i].num_iterations, 
+                solvers[i].relaxation_values, 
+                title="Lagrangian value update=$(solvers[i].update_formula)", 
+                label="Convergence", 
+                lw=1,
+                xaxis=:log )
     xlabel!("Iterations")
     ylabel!("Lagrangian value")
+    display(plt)
+  
 
-    savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_gap=$(round(gaps["Rule $i"], digits=3)).png")
-
-end
-
-for i=1:1:3
-
-    plt2 = plot(solvers[i].num_iterations, solvers[i].λ_distances, title="Residual λ update=$(solvers[i].update_formula)", label=["Residual λ"], lw=3, yaxis=:log, xaxis=:log)
+    plt2 = plot(solvers[i].num_iterations, 
+                solvers[i].λ_distances, 
+                title="Residual λ update=$(solvers[i].update_formula)", 
+                label="Residual λ", 
+                lw=1, 
+                xaxis=:log,
+                yaxis=:log )
     xlabel!("Iterations")
     ylabel!("Residual λ")
+    display(plt2)
+  
+    plt3 = plot(solvers[i].num_iterations, 
+                solvers[i].gaps, 
+                title="Gaps update=$(solvers[i].update_formula)", 
+                label="Gap", 
+                lw=1,
+                xaxis=:log )
+    xlabel!("Iterations")
+    ylabel!("Gap ϕ(λ)-f(x^*)")
+    display(plt3)
 
-    savefig(plt2, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    # savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_gap=$(round(gaps["Rule $i"], digits=3)).png")
+    # savefig(plt2, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    # savefig(plt3, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
 
 end
+   

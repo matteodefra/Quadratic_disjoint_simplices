@@ -10,7 +10,7 @@
 % \usepackage{algorithmic}
 \usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
 \usepackage[utf8]{inputenc}
-% \usepackage[top=0.5cm, left=1.5cm, right=1.5cm, bottom=1.5cm]{geometry}
+% \usepackage[left=3.2cm, right=3.2cm]{geometry}
 \usepackage{accents}
 \usepackage{float}
 \usepackage{hyperref}
@@ -207,18 +207,6 @@ to $\|\cdot\|_\Psi$ if
 \[ \Psi(y) \ge \Psi(x) + \left\langle \nabla \Psi(x),y-x \right\rangle + \frac{1}{2} \|x-y\|_\Psi^2 \]
 As a consequence, strong convexity is guaranteed if and only of $B_{\Psi_t}(x,y) \ge \frac{1}{2} \|x-y\|_{\Psi_t}^2$. The following bound holds then on proximal term, respectively for \eqref{eqn:primal-dual-update} and \eqref{eqn:composite-mirror-update}. 
 Proofs can be found in Appendix F of \cite{JMLR:v12:duchi11a}.
-% \begin{proposition}
-%   Let the sequence $\{x_t\}$ be defined by the update \eqref{eqn:primal-dual-update}. For any $x^* \in \mathcal{X}$
-%   \begin{equation}
-%     \sum_{t=1}^T f_t(x_t) + \varphi(x_t) - f_t(x^*) - \varphi(x^*) \le \frac{1}{\eta} \Psi_T(x^*) + \frac{\eta}{2} \sum_{t=1}^T \| f_t'(x_t) \|_{\Psi_{t-1}^*}^2
-%   \end{equation}
-% \end{proposition}
-% \begin{proposition}
-%   Let the sequence $\{x_t\}$ be defined by the update \eqref{eqn:composite-mirror-update}. Assume w.l.o.g. that $\varphi(x_1)=0$. For any $x^* \in \mathcal{X}$
-%   \begin{equation}
-%     \sum_{t=1}^T f_t(x_t) + \varphi(x_t) - f_t(x^*) - \varphi(x^*) \le \frac{1}{\eta} B_{\Psi_1} (x^*,x_1) + \frac{1}{\eta} \sum_{t=1}^{T-1} \left[ B_{\Psi_{t+1}}(x^*,x_{t+1}) - B_{\Psi_t}(x^*,x_{t+1}) \right] + \frac{\eta}{2} \sum_{t=1}^T \|f_t'(x_t) \|_{\Psi_t^*}^2
-%   \end{equation}
-% \end{proposition}
 \begin{proposition}
   Let the sequence $\{\lambda_t\}$ be defined by the update \eqref{eqn:primal-dual-update}. For any $\lambda^* \in \mathcal{X}$
   \begin{equation}
@@ -242,7 +230,7 @@ geometry of the space.
 First of all, let us state that the convergence rate of \texttt{ADAGRAD} is the same of the Stochastic Gradient Descent (\texttt{SGD}), hence $O(1/\sqrt{T})$ but with a lower constant due to the use of $G$ matrix.\\
 The algorithm 1 reported in \cite{JMLR:v12:duchi11a} will be applied to our problem and is reported here:
 \begin{flushleft}
-  \begin{minipage}{.7\textwidth}
+  \begin{minipage}{\textwidth}
     \begin{algorithm}[H]
       \caption{\texttt{ADAGRAD} for diagonal matrices}
       \label{alg:adagrad}
@@ -341,7 +329,6 @@ We expect to achieve an asymptotically sub-linear regret, as the authors showed 
 
 
 \subsection{General application to our case}
-% {\large NON SO SE METTERE ANCHE LE x, È EFFETTIVAMENTE CONVESSO?}\\
 In our setting, we aim to solve problem \eqref{eqn:problem} using \eqref{eqn:dual_problem}. We will use $\mathcal{X} = \{ \lambda \ge 0 \}$ as the constraint set of the lagrangian multipliers $\lambda$'s, and $\mathcal{Y} = \{ \sum_{i \in I^k} x_i = 1 \ \forall \, k \in K\}$ 
 as the constraint set of the primal variables.\\
 To solve the problem \eqref{eqn:primal-dual-update} and \eqref{eqn:composite-mirror-update} in our problem settings, we consider the update of the dual variable $\lambda$. Referring to the problem \eqref{eqn:dual_problem}, we can freely choose  
@@ -386,7 +373,7 @@ We need also to derive an update for the primal variables, which are needed at e
 We need to solve the lagrangian relaxation of a convex quadratic problem, depending on equality constraints made up of disjoint simplices. The constraint set $\mathcal{Y}$ can be rewritten in a matrix form $Ax = b$, where the vector $b$ is a $k \times 1$ vector of all ones, and the matrix $A$
 can be derived with the following simple algorithm:
 \begin{flushleft}
-  \begin{minipage}{.7\textwidth}
+  \begin{minipage}{\textwidth}
     \begin{algorithm}[H]
       \caption{Construct matrix $A$}
       \begin{algorithmic}
@@ -473,6 +460,8 @@ a linear system that can be solved directly and efficiently by computing the piv
   \end{bmatrix}\right) \right)
 \end{gather*}
 which can be solved efficiently through forward substitution (for the matrix $L$) and back substitution (for the matrix $U$) with a complexity of $O((n+K)^2)$.\\
+In the most general case the pivoted LU factorization is preferred, but we will see in the next chapter that the implementation language automatically identify the best 
+factorization to use (for example if the full matrix is positive definite, \textit{Cholesky} is better, as well as if the matrix is symmetric, the \textit{LDL} or \textit{Bunch-Kaufman} factorization are better).\\ 
 Lastly, regarding the stopping condition for the algorithm termination, we can check primal and dual variables. Follows that, given a certain value of tolerance $\epsilon$, we have %respectively for the primal and dual variables
 \begin{equation}
   \begin{gathered}
@@ -489,7 +478,7 @@ In addition to this, what we can check too is the duality gap between the origin
 From this we understand that having a zero duality gap implies optimality of the solution.\\ 
 Putting everything together, we obtain a slightly different algorithm than \ref{alg:adagrad}:
 \begin{flushleft}
-  \begin{minipage}{.7\textwidth}
+  \begin{minipage}{\textwidth}
     \begin{algorithm}[H]
       \caption{\texttt{ADAGRAD} on our dual problem}
       \label{alg:my_alg}
@@ -505,7 +494,7 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
             \State $s_{t,i} \gets \| g_{1:t,i} \|_2$\Comment{Solution of the problem \ref{sec:convergence}}
             \State $H_t = \gets \delta \mathit{I} + diag(s_t)$
             % \State $\Psi_t(\lambda_{t-1}) \gets \frac{1}{2} \left\langle \lambda_{t-1},H_t \lambda_{t-1} \right\rangle$  
-            \State $x_t = \argmin_{x \in \mathcal{Y}} \left\lbrace x^T Q x + q x - \left\langle \lambda_{t-1},x \right\rangle \right\rbrace$\Comment{Solution of Lagrangian relaxation}
+            \State $x_t = \argmin_{x \in \mathcal{Y}} \left\lbrace x^T Q x + q x - \left\langle \lambda_{t-1},x \right\rangle \right\rbrace$\Comment{Lagrangian}
             \State $\hat{\lambda}_t =$ one among $\eqref{eqn:updates}$
             \State $\lambda_t = P_\mathcal{X}(\hat{\lambda}_t)$ 
             \State Check stopping conditions \eqref{eqn:stopping-condition} or $max\_iter$ reached
@@ -516,30 +505,30 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
   \end{minipage}
 \end{flushleft}
 
+
 \section{Implementation}
-The ideas above described have been implemented using Julia. The provided package give the user the ability to provide the dimension of the problem $n$ and the number of simplices $K$ by input.\\
+The ideas above described have been implemented using Julia. The provided package give us the ability to provide the dimension of the problem $n$ and the number of simplices $K$ by input.\\
 Subsequently, the code is all automated and provide the creation of the matrix $Q \succeq 0$, $A$, the random sets $I^k$, the vector $q$ and all the required parameters. The resulting solutions 
-of the three different update rules are saved and compared with the optimal primal solution $f(x^*)$ found using the external package \textit{Convex.jl}.\\
-Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\epsilon$ value to check the $\lambda$ variation.\\
-All the values assumed by $x$, $\lambda$, each $\lambda$-norm, the number of iterations and the value of the Lagrangian function are saved at each iteration in order to display at the end a convergence plot 
-(\textit{iterations} vs \textit{Lagrangian value}) and a distance visualization plot of the $\lambda$-norm (\textit{iterations} vs $\lambda$\textit{-norms}).
-All the duality gaps and the resulting value of the Lagrangian functions are saved too in a dictionary and printed at the end to identify the best duality gap (among the different update rules) and 
-the function value.\\
+of the three different update rules are saved and compared with the optimal primal solution $f(x^*)$ found using the off-the-shelf solver \textit{Convex.jl} \cite{convexjl}.\\
+Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\epsilon$ value to check the $\lambda$ residual.\\
+All the values assumed by $x$, $\lambda$, each $\lambda$-norm and $x$-norm residual, the number of iterations and the value of the Lagrangian function are saved at each iteration and displayed 
+step by step, and in the end stored in a \textit{csv} file and used to display a convergence plot (\textit{iterations} vs \textit{Lagrangian value}) and a residual visualization plot of the 
+$\lambda$-norm (\textit{iterations} vs $\lambda$\textit{-norms}). All the duality gaps and the resulting value of the Lagrangian functions are saved too in a dictionary and printed at the end 
+to identify the best duality gap (among the different update rules) and the function value.\\
 During the execution of the algorithm, the initial parameters are showed, as well as the result of \textit{Convex.jl}. Then, the customized \texttt{ADAGRAD} starts with the three different variations, 
-showing at each iteration the time elapsed, the $\mathcal{L}$ value, both the $x$ norm and the $\lambda$ one, and finally the dual gap.\\
-All the iteration values are saved in a Dataframe and logged into a \textit{csv} file in order to inspect the results.\\[1em]
-In order to test the program on different problem dimensions, we have chosen different sizes to perform our experiments, in order to have a "grid search" of different experimentations.
+showing at each iteration the time elapsed, the $\mathcal{L}$ value, both the $\lambda$ norm residual and the $x$ one, and finally the dual gap.\\
+In order to test the program on different problem dimensions, we have chosen different sizes to perform our experiments, in order to have a "grid search" of different experimentations:
 
 \begin{center}
   \begin{tabular}[H]{| L | L | L | L |}
     \hline
     \mathbf{n} & \mathbf{K} & \mathbf{\epsilon} & \mathbf{max\_iter} \\
     \hline
-    10 & \left[3,5,7\right] & 10^{-5} & 1500 \\
+    10 & \left[3,5,7\right] & 10^{-5} & 10000 \\
     \hline
-    100 & \left[25,50,75\right] & 10^{-5} & 1500 \\
+    100 & \left[25,50,75\right] & 10^{-5} & 10000 \\
     \hline
-    500 & \left[125,250,375\right] & 10^{-5} & 1500 \\
+    500 & \left[125,250,375\right] & 10^{-5} & 10000 \\
     \hline
   \end{tabular}  
 \end{center}

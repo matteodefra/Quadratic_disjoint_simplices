@@ -34,6 +34,7 @@ mutable struct Solver
     λ_distances :: Vector{Float64}
     x_distances :: Vector{Float64}
     timings :: Vector{Float64}
+    gaps :: Vector{Float64}
     update_formula :: Int
     Full_mat :: Matrix{Float64}
     F :: Any
@@ -245,7 +246,7 @@ function my_ADAGRAD(solver)
         where the given x_{star} is computed at the previous step. As a consequence the L function
         is given by  
         
-            ∇_λ (x_{star}) ( λ * x_{star} + constant )
+            ∇_λ (x_{star}) ( - λ * x_{star} + constant )
             
         which is always differentiable since it is an hyperplane
         =#
@@ -326,11 +327,25 @@ function my_ADAGRAD(solver)
          
         push!(solver.timings, time_step)
 
+        current_gap = solver.Off_the_shelf_primal - solver.relaxation_values[end]
+
+        # Store the current gap
+        push!(solver.gaps, current_gap)
+
         if check_λ_norm(solver, solver.λ, previous_λ)
             # Add last row
             push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], "OPT", (solver.Off_the_shelf_primal - solver.relaxation_values[end]) ])
             break
         end
+
+        # FIND A FIX FOR DUALITY GAP
+        # if current_gap < 0
+        #     println("Found negative dual gap, fix it")
+        #     # Log result of the current iteration
+        #     @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] (solver.Off_the_shelf_primal - solver.relaxation_values[end])
+        #     push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], (solver.Off_the_shelf_primal - solver.relaxation_values[end]) ])
+        #     break      
+        # end
 
         # Log result of the current iteration
         @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] (solver.Off_the_shelf_primal - solver.relaxation_values[end])

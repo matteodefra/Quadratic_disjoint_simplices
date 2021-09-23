@@ -2,8 +2,6 @@ module ConvexSolution
 
 using Convex, SCS
 
-println("Convex.jl solution")
-
 mutable struct ConvexSol
     n :: Int
     x :: Variable

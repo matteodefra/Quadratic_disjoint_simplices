@@ -151,7 +151,7 @@ function check_λ_norm(solver, current_λ, previous_λ)
     if distance <= solver.ϵ
         # We should exit the loop
         # Log result of the last iteration
-        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] (solver.Off_the_shelf_primal - solver.relaxation_values[end])
+        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%s \t\t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
 
         println("\nOptimal distance between λ's found:")
         display(distance)
@@ -219,7 +219,7 @@ function my_ADAGRAD(solver)
                     LagrangianValue = Float64[],
                     x_norm_residual = Float64[],
                     λ_norm_residual = Any[],
-                    Dual_gap = Float64[] )
+                    Dual_gap = Any[] )
 
     solver.iteration = 0
 
@@ -334,24 +334,23 @@ function my_ADAGRAD(solver)
 
         if check_λ_norm(solver, solver.λ, previous_λ)
             # Add last row
-            push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], "OPT", (solver.Off_the_shelf_primal - solver.relaxation_values[end]) ])
+            push!(df, [ solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
             break
         end
 
-        # FIND A FIX FOR DUALITY GAP
-        # if current_gap < 0
-        #     println("Found negative dual gap, fix it")
-        #     # Log result of the current iteration
-        #     @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] (solver.Off_the_shelf_primal - solver.relaxation_values[end])
-        #     push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], (solver.Off_the_shelf_primal - solver.relaxation_values[end]) ])
-        #     break      
-        # end
+        if current_gap > 0 && current_gap <= 0.1
+            println("Found optimal dual gap")
+            # Log result of the current iteration
+            @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
+            push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
+            break  
+        end
 
         # Log result of the current iteration
-        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] (solver.Off_the_shelf_primal - solver.relaxation_values[end])
+        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
        
         # Add to DataFrame to save results
-        push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], (solver.Off_the_shelf_primal - solver.relaxation_values[end]) ])
+        push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
 
     end
 

@@ -76,14 +76,14 @@ display(I_K)
 print("\n")
 
 # Initialize x iterates to zero
-x = randn((n,1))
+x = abs.(randn((n,1)))
 
-# Feasible x:
-for set in I_K
-    for val in set
-        x[val] = 1 / length(set)
-    end
-end
+# # Feasible x:
+# for set in I_K
+#     for val in set
+#         x[val] = 1 / length(set)
+#     end
+# end
 
 println("Starting x:")
 display(x)
@@ -145,15 +145,15 @@ print("\n")
         Bunch-Kaufman ( if Q=Q^T )
         pivoted LU ( otherwise )
 =#
-global F
+# global F
 
-try 
-    global F = cholesky!(Hermitian(Full_mat))
-catch y
-    if isa(y, PosDefException)
-        println("Matrix is not positive definite")
-    end
-end
+# try 
+#     global F = cholesky!(Hermitian(Full_mat))
+# catch y
+#     if isa(y, PosDefException)
+#         println("Matrix is not positive definite")
+#     end
+# end
 
 # Lu factorization (unless Full_mat is symmetric)
 F = factorize(Full_mat)
@@ -373,7 +373,7 @@ display(L_values)
 # using DataFrames
 using Plots
 
-Plots.theme(:wong)
+Plots.theme(:default)
 
 plotlyjs(size=(600,450))
 
@@ -385,7 +385,7 @@ for i=1:1:3
                 solvers[i].relaxation_values, 
                 title="Lagrangian value update=$(solvers[i].update_formula)", 
                 label="Convergence", 
-                lw=1,
+                lw=2,
                 xaxis=:log )
     xlabel!("Iterations")
     ylabel!("Lagrangian value")
@@ -396,7 +396,7 @@ for i=1:1:3
                 solvers[i].λ_distances, 
                 title="Residual λ update=$(solvers[i].update_formula)", 
                 label="Residual λ", 
-                lw=1, 
+                lw=2, 
                 xaxis=:log,
                 yaxis=:log )
     xlabel!("Iterations")
@@ -407,7 +407,7 @@ for i=1:1:3
                 solvers[i].gaps, 
                 title="Gaps update=$(solvers[i].update_formula)", 
                 label="Gap", 
-                lw=1,
+                lw=2,
                 xaxis=:log )
     xlabel!("Iterations")
     ylabel!("Gap ϕ(λ)-f(x^*)")

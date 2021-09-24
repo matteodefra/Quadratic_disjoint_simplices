@@ -512,9 +512,9 @@ Subsequently, the code is all automated and provide the creation of the matrix $
 of the three different update rules are saved and compared with the optimal primal solution $f(x^*)$ found using the off-the-shelf solver \textit{Convex.jl} \cite{convexjl}.\\
 Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\epsilon$ value to check the $\lambda$ residual.\\
 All the values assumed by $x$, $\lambda$, each $\lambda$-norm and $x$-norm residual, the number of iterations and the value of the Lagrangian function are saved at each iteration and displayed 
-step by step, and in the end stored in a \textit{csv} file and used to display a convergence plot (\textit{iterations} vs \textit{Lagrangian value}) and a residual visualization plot of the 
-$\lambda$-norm (\textit{iterations} vs $\lambda$\textit{-norms}). All the duality gaps and the resulting value of the Lagrangian functions are saved too in a dictionary and printed at the end 
-to identify the best duality gap (among the different update rules) and the function value.\\
+step by step, and in the end stored in a \textit{csv} file and used to display a convergence plot (\textit{iterations} vs \textit{Lagrangian value}), a residual visualization plot of the 
+$\lambda$-norm (\textit{iterations} vs $\lambda$\textit{-norms}) and finally a gap residual plot (\textit{iterations} vs $\phi(\lambda_t) - f(x^*)$). All the duality gaps and the resulting value 
+of the Lagrangian functions are saved too in a dictionary and printed at the end to identify the best duality gap (among the different update rules) and the function value.\\
 During the execution of the algorithm, the initial parameters are showed, as well as the result of \textit{Convex.jl}. Then, the customized \texttt{ADAGRAD} starts with the three different variations, 
 showing at each iteration the time elapsed, the $\mathcal{L}$ value, both the $\lambda$ norm residual and the $x$ one, and finally the dual gap.\\
 In order to test the program on different problem dimensions, we have chosen different sizes to perform our experiments, in order to have a "grid search" of different experimentations:
@@ -532,6 +532,10 @@ In order to test the program on different problem dimensions, we have chosen dif
     \hline
   \end{tabular}  
 \end{center}
+
+The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled and the needed memory is computed, 
+then the next executions are much much faster. Then we suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=\left[1,2\right]$) and ignore the results, and then start the experiments with 
+the values of the previous table.
 
 
 \newpage

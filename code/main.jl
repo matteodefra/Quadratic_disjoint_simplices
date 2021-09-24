@@ -121,10 +121,13 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 10000
+max_iter = 100000
 
 # Initialize ϵ
-ϵ = 1e-5
+ϵ = 1e-6
+
+# Initialize τ
+τ = 1e-1
 
 A = Utils.construct_A(K, n, I_K)
 
@@ -191,7 +194,7 @@ solver_rule1 = ADAGRAD_Solver.Solver(
     Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
     Array{Float64}(undef, n, 1), # s_t
     Array{Float64}(undef, n, 1), # avg_gradient
-    Q, q, η, δ, max_iter, ϵ, 
+    Q, q, η, δ, max_iter, ϵ, τ,
     Vector{Float64}(), # num_iterations
     Vector{Float64}(), # relaxation_values
     Array{Float64}(undef, n, 0), # x_values
@@ -212,7 +215,7 @@ solver_rule2 = ADAGRAD_Solver.Solver(
     Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
     Array{Float64}(undef, n, 1), # s_t
     Array{Float64}(undef, n, 1), # avg_gradient
-    Q, q, η, δ, max_iter, ϵ, 
+    Q, q, η, δ, max_iter, ϵ, τ, 
     Vector{Float64}(), # num_iterations
     Vector{Float64}(), # relaxation_values
     Array{Float64}(undef, n, 0), # x_values
@@ -233,7 +236,7 @@ solver_rule3 = ADAGRAD_Solver.Solver(
     Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
     Array{Float64}(undef, n, 1), # s_t
     Array{Float64}(undef, n, 1), # avg_gradient
-    Q, q, η, δ, max_iter, ϵ, 
+    Q, q, η, δ, max_iter, ϵ, τ,
     Vector{Float64}(), # num_iterations
     Vector{Float64}(), # relaxation_values
     Array{Float64}(undef, n, 0), # x_values
@@ -373,9 +376,9 @@ display(L_values)
 # using DataFrames
 using Plots
 
-Plots.theme(:default)
+Plots.theme(:ggplot2)
 
-plotlyjs(size=(600,450))
+gr()
 
 solvers = [ solver_rule1, solver_rule2, solver_rule3 ]
 
@@ -383,39 +386,56 @@ for i=1:1:3
 
     plt = plot( solvers[i].num_iterations, 
                 solvers[i].relaxation_values, 
-                title="Lagrangian value update=$(solvers[i].update_formula)", 
-                label="Convergence", 
-                lw=2,
-                xaxis=:log )
+                title = "Lagrangian value update=$(solvers[i].update_formula)", 
+                label = "Convergence", 
+                lw = 2,
+                dpi = 140,
+                linealpha = 0.5,
+                xscale = :log10,
+                minorticks = 5,
+                formatter = :plain )
     xlabel!("Iterations")
     ylabel!("Lagrangian value")
-    display(plt)
+    # display(plt)
   
 
     plt2 = plot(solvers[i].num_iterations, 
                 solvers[i].λ_distances, 
-                title="Residual λ update=$(solvers[i].update_formula)", 
-                label="Residual λ", 
-                lw=2, 
-                xaxis=:log,
-                yaxis=:log )
+                title = "Residual λ update=$(solvers[i].update_formula)", 
+                label = "Residual λ", 
+                lw = 2, 
+                dpi = 140,
+                xscale = :log10,
+                yscale = :log10,
+                linealpha = 0.5,
+                minorticks = 5,
+                formatter = :plain )
     xlabel!("Iterations")
     ylabel!("Residual λ")
-    display(plt2)
+    # display(plt2)
   
+    ticks = range( minimum(solvers[i].gaps), maximum(solvers[i].gaps), length = 5 )
+    ticks_string = [ string(round(el, digits = 3)) for el in ticks ]
+
     plt3 = plot(solvers[i].num_iterations, 
                 solvers[i].gaps, 
-                title="Gaps update=$(solvers[i].update_formula)", 
-                label="Gap", 
-                lw=2,
-                xaxis=:log )
+                title = "Gaps update=$(solvers[i].update_formula)", 
+                label = "Gap", 
+                lw = 2,
+                dpi = 140,
+                xscale = :log10,
+                yscale = :log10,
+                linealpha = 0.5,
+                minorticks = 5,
+                yticks = ( ticks, ticks_string ),
+                formatter = :plain )
     xlabel!("Iterations")
-    ylabel!("Gap ϕ(λ)-f(x^*)")
-    display(plt3)
+    ylabel!("Gap ϕ(λ)-f(x*)")
+    # display(plt3)
 
-    # savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_gap=$(round(gaps["Rule $i"], digits=3)).png")
-    # savefig(plt2, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
-    # savefig(plt3, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_gap=$(round(gaps["Rule $i"], digits=3)).png")
+    savefig(plt2, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    savefig(plt3, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
 
 end
    

@@ -27,6 +27,7 @@ mutable struct Solver
     δ :: Float64
     max_iter :: Int
     ϵ :: Float64
+    τ :: Float64
     num_iterations :: Vector{Float64}
     relaxation_values :: Vector{Float64}
     x_values :: Array{Float64}
@@ -151,7 +152,7 @@ function check_λ_norm(solver, current_λ, previous_λ)
     if distance <= solver.ϵ
         # We should exit the loop
         # Log result of the last iteration
-        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%s \t\t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
+        @printf "%d\t\t%.8f \t%.8f \t%.8f \t%s \t\t%.8f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
 
         println("\nOptimal distance between λ's found:")
         display(distance)
@@ -225,16 +226,22 @@ function my_ADAGRAD(solver)
 
     while solver.iteration < solver.max_iter
 
+        # Set starting time
         starting_time = time()
 
+        # Increment iteration
         solver.iteration += 1
 
+        # Save iteration
         push!(solver.num_iterations, solver.iteration)
 
+        # Modify η in DSS way
         solver.η = 1 / solver.iteration
 
+        # Assign previous_λ
         previous_λ = solver.λ
 
+        # Assign previous_x
         previous_x = solver.x
 
         #= 
@@ -292,9 +299,6 @@ function my_ADAGRAD(solver)
 
         solver.x, μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
-        # println("x value:")
-        # display(solver.x)
-        # print("\n")
     
         #=
         Compute the update rule for the lagrangian multipliers λ: can use 
@@ -323,10 +327,13 @@ function my_ADAGRAD(solver)
         # Store timing result of this iteration
         finish_time = time()    
 
+        # Compute timing needed for this iteration
         time_step = finish_time - starting_time
-         
+            
+        # Save time step
         push!(solver.timings, time_step)
 
+        # Compute current dual_gap
         current_gap = solver.Off_the_shelf_primal - solver.relaxation_values[end]
 
         # Store the current gap
@@ -338,17 +345,19 @@ function my_ADAGRAD(solver)
             break
         end
 
-        if current_gap > 0 && current_gap <= 0.1
+        if current_gap > 0 && current_gap <= solver.τ
             println("Found optimal dual gap")
             # Log result of the current iteration
-            @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
+            @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
             push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
             break  
         end
 
-        # Log result of the current iteration
-        @printf "%d\t\t%.5f \t%.5f \t%.5f \t%.5f \t%.5f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
-       
+        if (solver.iteration == 1) || (solver.iteration % 10 == 0)
+            # Log result of the current iteration
+            @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+        end
+        
         # Add to DataFrame to save results
         push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
 

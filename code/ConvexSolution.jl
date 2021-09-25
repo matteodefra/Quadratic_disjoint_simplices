@@ -13,7 +13,8 @@ mutable struct ConvexSol
 end
 
 function compute_solution(convex_sol)
-    problem = minimize( quadform(convex_sol.x, convex_sol.Q) + dot(convex_sol.q, convex_sol.x) )
+    # problem = minimize( quadform(convex_sol.x, convex_sol.Q) + dot(convex_sol.q, convex_sol.x) )
+    problem = minimize( matrixfrac(convex_sol.x, inv(convex_sol.Q)) + dot(convex_sol.q, convex_sol.x) )
 
     for row in eachrow(convex_sol.A)
         problem.constraints += [row' * convex_sol.x == 1]

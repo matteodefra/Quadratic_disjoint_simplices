@@ -212,6 +212,31 @@ function my_ADAGRAD(solver)
 
     solver.iteration = 0
 
+    L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
+
+    push!(solver.timings, 0.00000000)
+
+    push!(solver.num_iterations, solver.iteration)
+
+    push!(solver.relaxation_values, L_val[1])
+
+    # Storing x_{solver.iteration}
+    solver.x_values = [solver.x_values solver.x]
+
+    # Storing λ_{solver.iteration}
+    solver.λ_values = [solver.λ_values solver.λ]
+
+    # Compute \| x_t - x_{t-1} \|_2 and save it
+    push!(solver.x_distances, norm(solver.x))
+
+    current_gap = solver.Off_the_shelf_primal - solver.relaxation_values[end]
+
+    push!(solver.gaps, current_gap)
+
+    push!(solver.λ_distances, norm(solver.λ))
+
+    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+
     while solver.iteration < solver.max_iter
 
         # Set starting time
@@ -339,10 +364,18 @@ function my_ADAGRAD(solver)
             push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
             break  
         elseif current_gap < 0
-            # If the gap becomes negative (matter of numbers)
+            # If the gap becomes negative (matter of numbers) exclude last iteration and consider previous one
             println("Found negative dual gap")
-            solver.gaps[end] = 0.000000001
-            # Log result of the current iteration
+            # Clean vectors
+            solver.λ = previous_λ
+            solver.x = previous_x
+            pop!(solver.num_iterations)
+            pop!(solver.relaxation_values)
+            pop!(solver.x_distances)
+            pop!(solver.timings)
+            pop!(solver.gaps)
+            pop!(solver.λ_distances)
+            # Log result of the previous iteration
             @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
             push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
             break 

@@ -5,6 +5,7 @@ include("./ConvexSolution.jl")
 using LinearAlgebra
 using Random
 using Convex
+using Distributions
 using .Utils
 using .ADAGRAD_Solver
 # Compute the solution of Convex.jl
@@ -76,32 +77,49 @@ display(I_K)
 print("\n")
 
 # Initialize x iterates to zero
-x = abs.(randn((n,1)))
+x = zeros((n,1))
 
-# # Feasible x:
-# for set in I_K
-#     for val in set
-#         x[val] = 1 / length(set)
-#     end
-# end
+# Start with feasible x:
+for set in I_K
+    for val in set
+        x[val] = 1 / length(set)
+    end
+end
 
 println("Starting x:")
 display(x)
 print("\n")
 
 # Initialize λ iterates to zero
-λ = abs.(randn((n,1)))
+λ = ones((n,1))
 
 println("Starting λs:")
 display(λ)
 print("\n")
 
-# Create random matrix A_help
+# # Create random matrix A_help
 A_help = randn(Float64 ,n, n)
 
-# Multiply A with its transpose in order to have always positive semidefinite condition
+# #= 
+#     Useful way to create positive semidefinite matrix: 
+#     construct Q using a random matrix A (invertible) and create 
+#     a diagonal random matrix with given eigenvalues of Q.
+#     A random probability number is used to set an eigenvalue as 0 or not,
+#     to manage positive semidefinite and also positive definite case
+# =#
+# vect = abs.(randn((n,1)))
+
+# prob = abs(rand())
+
+# if prob > 0.5
+#     println("Prob greater")
+#     vect[end] = 0.0
+# end
+
+# Q = A_help * Diagonal(vect) * inv(A_help)
+
+# Or multiply A_help with its transpose in order to have always positive semidefiniteness condition
 Q = A_help' * A_help
-# Q = A_help
 
 println("Q matrix:")
 display(Q)
@@ -148,16 +166,6 @@ print("\n")
         Bunch-Kaufman ( if Q=Q^T )
         pivoted LU ( otherwise )
 =#
-# global F
-
-# try 
-#     global F = cholesky!(Hermitian(Full_mat))
-# catch y
-#     if isa(y, PosDefException)
-#         println("Matrix is not positive definite")
-#     end
-# end
-
 # Lu factorization (unless Full_mat is symmetric)
 F = factorize(Full_mat)
 
@@ -384,58 +392,98 @@ solvers = [ solver_rule1, solver_rule2, solver_rule3 ]
 
 for i=1:1:3
 
+    ticks = range( minimum(solvers[i].relaxation_values), maximum(solvers[i].relaxation_values), length = 5 )
+    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+
     plt = plot( solvers[i].num_iterations, 
                 solvers[i].relaxation_values, 
                 title = "Lagrangian value update=$(solvers[i].update_formula)", 
-                label = "Convergence", 
+                titlefontsize = 12,
+                label = "Lagrangian", 
                 lw = 2,
-                dpi = 140,
+                dpi = 360,
                 linealpha = 0.5,
                 xscale = :log10,
                 minorticks = 5,
+                legend = :bottomright,
+                yticks = ( ticks, ticks_string ),
+                tickfontsize = 6,
+                guidefontsize = 9,
                 formatter = :plain )
     xlabel!("Iterations")
     ylabel!("Lagrangian value")
     # display(plt)
-  
+
+    ticks = range( minimum(solvers[i].gaps), maximum(solvers[i].gaps), length = 5 )
+    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
 
     plt2 = plot(solvers[i].num_iterations, 
-                solvers[i].λ_distances, 
-                title = "Residual λ update=$(solvers[i].update_formula)", 
-                label = "Residual λ", 
-                lw = 2, 
-                dpi = 140,
-                xscale = :log10,
-                yscale = :log10,
-                linealpha = 0.5,
-                minorticks = 5,
-                formatter = :plain )
-    xlabel!("Iterations")
-    ylabel!("Residual λ")
-    # display(plt2)
-  
-    ticks = range( minimum(solvers[i].gaps), maximum(solvers[i].gaps), length = 5 )
-    ticks_string = [ string(round(el, digits = 3)) for el in ticks ]
-
-    plt3 = plot(solvers[i].num_iterations, 
                 solvers[i].gaps, 
                 title = "Gaps update=$(solvers[i].update_formula)", 
+                titlefontsize = 12,
                 label = "Gap", 
                 lw = 2,
-                dpi = 140,
+                dpi = 360,
                 xscale = :log10,
                 yscale = :log10,
                 linealpha = 0.5,
                 minorticks = 5,
                 yticks = ( ticks, ticks_string ),
+                tickfontsize = 6,
+                guidefontsize = 9,
                 formatter = :plain )
     xlabel!("Iterations")
     ylabel!("Gap ϕ(λ)-f(x*)")
+    # display(plt2)
+
+    plt3 = plot(solvers[i].num_iterations, 
+                solvers[i].λ_distances, 
+                title = "Residual λ update=$(solvers[i].update_formula)", 
+                titlefontsize = 12,
+                label = "Residual λ", 
+                lw = 2, 
+                dpi = 360,
+                xscale = :log10,
+                yscale = :log10,
+                linealpha = 0.5,
+                minorticks = 5,
+                tickfontsize = 6,
+                guidefontsize = 9,
+                formatter = :plain )
+    xlabel!("Iterations")
+    ylabel!("Residual λ")
     # display(plt3)
 
-    savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_gap=$(round(gaps["Rule $i"], digits=3)).png")
-    savefig(plt2, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
-    savefig(plt3, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    plt4 = plot(solvers[i].num_iterations, 
+                solvers[i].x_distances, 
+                title = "Residual x update=$(solvers[i].update_formula)", 
+                titlefontsize = 12,
+                label = "Residual x", 
+                lw = 2, 
+                dpi = 360,
+                xscale = :log10,
+                yscale = :log10,
+                linealpha = 0.5,
+                minorticks = 5,
+                tickfontsize = 6,
+                guidefontsize = 9,
+                formatter = :plain )
+    xlabel!("Iterations")
+    ylabel!("Residual x")
+    # display(plt2)
+
+    savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_gap=$(round(gaps["Rule $i"], digits=2)).png")
+    savefig(plt2, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    savefig(plt3, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    savefig(plt4, "plots/Residual_x_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    
+    # total_plot = plot(plt, plt2, plt3, plt4, 
+    #                 layout = @layout([a b; c d]), 
+    #                 title = "Update $(solvers[i].update_formula)",
+    #                 dpi = 360)
+    
+    # savefig(total_plot, "plots/Subplot=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+    
 
 end
    

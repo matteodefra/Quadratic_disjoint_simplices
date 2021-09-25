@@ -122,10 +122,6 @@ function compute_update_rule(solver, H_t)
 
     λ = max.(0, λ)
 
-    # println("Updated λ")
-    # display(λ)
-    # print("\n")
-
     return λ
 
 end
@@ -142,10 +138,6 @@ function check_λ_norm(solver, current_λ, previous_λ)
     res = current_λ .- previous_λ
 
     distance = norm(res)
-
-    # println("Distance between λ's")
-    # display(distance)
-    # print("\n")
 
     push!(solver.λ_distances, distance)
 
@@ -194,10 +186,6 @@ function x_norm(previous_x, current_x)
     res = current_x .- previous_x
 
     distance = norm(res)
-
-    # println("Distance between λ's")
-    # display(distance)
-    # print("\n")
 
     return distance
 
@@ -299,13 +287,12 @@ function my_ADAGRAD(solver)
 
         solver.x, μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
-    
         #=
         Compute the update rule for the lagrangian multipliers λ: can use 
         one among the three showed, then soft threshold the result
         =#
         solver.λ = compute_update_rule(solver, H_t)
-
+        
         # Compute Lagrangian function value
         L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
 
@@ -351,13 +338,25 @@ function my_ADAGRAD(solver)
             @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
             push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
             break  
+        elseif current_gap < 0
+            # If the gap becomes negative (matter of numbers)
+            println("Found negative dual gap")
+            solver.gaps[end] = 0.000000001
+            # Log result of the current iteration
+            @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
+            push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
+            break 
         end
 
         if (solver.iteration == 1) || (solver.iteration % 10 == 0)
             # Log result of the current iteration
             @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
         end
-        
+
+        if isnan( solver.relaxation_values[end] ) || isnan( solver.x_distances[end] ) || isnan( solver.λ_distances[end] ) || isnan( current_gap )
+            println("Some NaN values detected")
+            break
+        end
         # Add to DataFrame to save results
         push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
 

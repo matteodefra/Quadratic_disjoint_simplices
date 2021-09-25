@@ -5,7 +5,6 @@ include("./ConvexSolution.jl")
 using LinearAlgebra
 using Random
 using Convex
-using Distributions
 using .Utils
 using .ADAGRAD_Solver
 # Compute the solution of Convex.jl
@@ -72,54 +71,73 @@ end
 # I_K contains all the I^k required to create the simplices constraints
 I_K = initialize_sets(indexes, K, n)
 
+indexes = nothing
+
 println("Set of I_K arrays:")
 display(I_K)
 print("\n")
 
-# Initialize x iterates to zero
-x = zeros((n,1))
+# Initialize x iterates to ones
+x = ones((n,1))
 
-# Start with feasible x:
-for set in I_K
-    for val in set
-        x[val] = 1 / length(set)
-    end
-end
-
-println("Starting x:")
-display(x)
-print("\n")
-
-# Initialize λ iterates to zero
+# Initialize λ iterates to ones
 λ = ones((n,1))
-
-println("Starting λs:")
-display(λ)
-print("\n")
 
 # # Create random matrix A_help
 A_help = randn(Float64 ,n, n)
 
-# #= 
-#     Useful way to create positive semidefinite matrix: 
-#     construct Q using a random matrix A (invertible) and create 
-#     a diagonal random matrix with given eigenvalues of Q.
-#     A random probability number is used to set an eigenvalue as 0 or not,
-#     to manage positive semidefinite and also positive definite case
-# =#
-# vect = abs.(randn((n,1)))
+# Construct covariace matrix and add identity to have A_H ≻ 0
+A_H = A_help' * A_help + I 
 
-# prob = abs(rand())
+# Compute the inverse 
+A_H_inverse = inv(A_H)
 
-# if prob > 0.5
-#     println("Prob greater")
-#     vect[end] = 0.0
-# end
+#=
+    Construct Q using a surely nonsingular matrix A_H using positive random eigenvalues.
+    A random probability number is used to set an eigenvalue as 0 or not,
+    to manage positive semidefinite or positive definite case.
+    If prob > 0.5 ⟹ some given numbers of eigenvalues are set to 0
+    Else ⟹ Q is created as positive definite 
+=#
 
-# Q = A_help * Diagonal(vect) * inv(A_help)
+# Eigenvalues of Q
+vect = abs.(randn((n,1)))
+
+# Random number used to set zeros
+prob = abs(rand())
+
+if prob > 0.5
+    println("Prob greater than zero")
+
+    # Random number of zeros to set
+    eigens = rand(1:n-1)
+
+    # Loop over vect and modify eigenvalues
+    ind = 0
+    
+    while eigens > 0
+        vect[end - ind] = 0.0
+        global ind
+        global eigens
+        ind += 1
+        eigens -= 1    
+    end
+
+    display(vect)
+
+end
+
+Q = A_H * Diagonal(vect) * A_H_inverse
+
+# Garbage collector
+vect = nothing
+A_help = nothing
+A_H = nothing
+A_H_inverse = nothing
+GC.gc()
 
 # Or multiply A_help with its transpose in order to have always positive semidefiniteness condition
-Q = A_help' * A_help
+# Q = A_help' * A_help
 
 println("Q matrix:")
 display(Q)
@@ -195,6 +213,28 @@ print("\n")
 #----------     Create problem structs     ------------#
 #------------------------------------------------------#
 
+val = Utils.compute_lagrangian(Q, q, x, λ)[1]
+
+#= 
+    Check that we are not violating the lagrangian:
+    compute new random values for x and λ to start in a feasible solution
+=#
+while (convex_sol.opt_val - val) < 0
+    global x
+    global λ
+    x = randn((n,1))
+    λ = abs.(randn((n,1)))
+    global val 
+    val = Utils.compute_lagrangian(Q, q, x, λ)[1]
+end
+
+println("Starting x:")
+display(x)
+print("\n")
+
+println("Starting λs:")
+display(λ)
+print("\n")
 
 # Create three different struct to exploit the three update rule
 solver_rule1 = ADAGRAD_Solver.Solver(
@@ -392,6 +432,7 @@ solvers = [ solver_rule1, solver_rule2, solver_rule3 ]
 
 for i=1:1:3
 
+
     ticks = range( minimum(solvers[i].relaxation_values), maximum(solvers[i].relaxation_values), length = 5 )
     ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
 
@@ -403,6 +444,7 @@ for i=1:1:3
                 lw = 2,
                 dpi = 360,
                 linealpha = 0.5,
+                linecolor = :green,
                 xscale = :log10,
                 minorticks = 5,
                 legend = :bottomright,
@@ -427,6 +469,7 @@ for i=1:1:3
                 xscale = :log10,
                 yscale = :log10,
                 linealpha = 0.5,
+                linecolor = :green,
                 minorticks = 5,
                 yticks = ( ticks, ticks_string ),
                 tickfontsize = 6,
@@ -446,6 +489,7 @@ for i=1:1:3
                 xscale = :log10,
                 yscale = :log10,
                 linealpha = 0.5,
+                linecolor = :green,
                 minorticks = 5,
                 tickfontsize = 6,
                 guidefontsize = 9,
@@ -464,13 +508,14 @@ for i=1:1:3
                 xscale = :log10,
                 yscale = :log10,
                 linealpha = 0.5,
+                linecolor = :green,
                 minorticks = 5,
                 tickfontsize = 6,
                 guidefontsize = 9,
                 formatter = :plain )
     xlabel!("Iterations")
     ylabel!("Residual x")
-    # display(plt2)
+    # display(plt4)
 
     savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_gap=$(round(gaps["Rule $i"], digits=2)).png")
     savefig(plt2, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")

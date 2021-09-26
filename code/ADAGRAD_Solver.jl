@@ -73,10 +73,6 @@ end
 
         λ_t = λ_{t-1} + η H_{t-1}^{-1} g_t
 
-    The value of Ψ explode the second term of the latter update_rule. As a consequence 
-    the next value of λ becomes bigger and bigger. A minus sign instead constrain the 
-    value of λ to be smaller but at the same time reduce also the value of Ψ
-
 =#
 function compute_update_rule(solver, H_t)
     
@@ -144,7 +140,7 @@ function check_λ_norm(solver, current_λ, previous_λ)
     if distance <= solver.ϵ
         # We should exit the loop
         # Log result of the last iteration
-        @printf "%d\t\t%.8f \t%.8f \t%.8f \t%s \t\t%.8f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
+        @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%s \t\t%1.5e \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
 
         println("\nOptimal distance between λ's found:")
         display(distance)
@@ -214,28 +210,9 @@ function my_ADAGRAD(solver)
 
     L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
 
-    push!(solver.timings, 0.00000000)
+    current_gap = solver.Off_the_shelf_primal - L_val[1]
 
-    push!(solver.num_iterations, solver.iteration)
-
-    push!(solver.relaxation_values, L_val[1])
-
-    # Storing x_{solver.iteration}
-    solver.x_values = [solver.x_values solver.x]
-
-    # Storing λ_{solver.iteration}
-    solver.λ_values = [solver.λ_values solver.λ]
-
-    # Compute \| x_t - x_{t-1} \|_2 and save it
-    push!(solver.x_distances, norm(solver.x))
-
-    current_gap = solver.Off_the_shelf_primal - solver.relaxation_values[end]
-
-    push!(solver.gaps, current_gap)
-
-    push!(solver.λ_distances, norm(solver.λ))
-
-    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration 0.00000000 L_val[1] norm(solver.x) norm(solver.λ) current_gap
 
     while solver.iteration < solver.max_iter
 
@@ -360,30 +337,30 @@ function my_ADAGRAD(solver)
         if current_gap > 0 && current_gap <= solver.τ
             println("Found optimal dual gap")
             # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
             push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
             break  
-        elseif current_gap < 0
-            # If the gap becomes negative (matter of numbers) exclude last iteration and consider previous one
-            println("Found negative dual gap")
-            # Clean vectors
-            solver.λ = previous_λ
-            solver.x = previous_x
-            pop!(solver.num_iterations)
-            pop!(solver.relaxation_values)
-            pop!(solver.x_distances)
-            pop!(solver.timings)
-            pop!(solver.gaps)
-            pop!(solver.λ_distances)
-            # Log result of the previous iteration
-            @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
-            push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
-            break 
+        # elseif current_gap < 0
+        #     # If the gap becomes negative (matter of numbers) exclude last iteration and consider previous one
+        #     println("Found negative dual gap")
+        #     # Clean vectors
+        #     solver.λ = previous_λ
+        #     solver.x = previous_x
+        #     # pop!(solver.num_iterations)
+        #     # pop!(solver.relaxation_values)
+        #     # pop!(solver.x_distances)
+        #     # pop!(solver.timings)
+        #     # pop!(solver.gaps)
+        #     # pop!(solver.λ_distances)
+        #     # Log result of the previous iteration
+        #     @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
+        #     push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
+        #     break 
         end
 
         if (solver.iteration == 1) || (solver.iteration % 10 == 0)
             # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
         end
 
         if isnan( solver.relaxation_values[end] ) || isnan( solver.x_distances[end] ) || isnan( solver.λ_distances[end] ) || isnan( current_gap )

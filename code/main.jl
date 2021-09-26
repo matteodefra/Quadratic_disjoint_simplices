@@ -1,6 +1,7 @@
 include("./ADAGRAD_Solver.jl")
 include("./Utils.jl")
 include("./ConvexSolution.jl")
+include("./JuMPSolution.jl")
 
 using LinearAlgebra
 using Random
@@ -9,6 +10,7 @@ using .Utils
 using .ADAGRAD_Solver
 # Compute the solution of Convex.jl
 using .ConvexSolution
+using .JuMPSolution
 
 
 #------------------------------------------------------#
@@ -80,17 +82,37 @@ print("\n")
 # Initialize x iterates to ones
 x = ones((n,1))
 
+for set in I_K
+    for val in set
+        x[val] = 1/length(set)
+    end
+end
+
 # Initialize λ iterates to ones
 λ = ones((n,1))
 
 # # Create random matrix A_help
 A_help = randn(Float64 ,n, n)
 
+r = rank(A_help)
+
+println("Matrix rank:")
+display(r)
+
+while r < n
+    global A_help
+    global r
+    A_help = randn(Float64 ,n, n)
+    r = rank(A_help)
+    println("Matrix rank:")
+    display(r)
+end
+
 # Construct covariace matrix and add identity to have A_H ≻ 0
-A_H = A_help' * A_help + I 
+# A_H = A_help' * A_help + I 
 
 # Compute the inverse 
-A_H_inverse = inv(A_H)
+A_help_inv = inv(A_help)
 
 #=
     Construct Q using a surely nonsingular matrix A_H using positive random eigenvalues.
@@ -127,17 +149,16 @@ if prob > 0.5
 
 end
 
-Q = A_H * Diagonal(vect) * A_H_inverse
+vect = vec(vect)
+
+Q = A_help * Diagonal(vect) * A_help_inv
+# Q = A_help' * A_help
 
 # Garbage collector
 vect = nothing
 A_help = nothing
-A_H = nothing
-A_H_inverse = nothing
+A_help_inv = nothing
 GC.gc()
-
-# Or multiply A_help with its transpose in order to have always positive semidefiniteness condition
-# Q = A_help' * A_help
 
 println("Q matrix:")
 display(Q)
@@ -192,41 +213,41 @@ display(F)
 print("\n")
 
 #------------------------------------------------------#
-#----    Use Convex.jl to compute primal solution   ---#
+#-----    Use JuMP.jl to compute primal solution   ----#
 #------------------------------------------------------#
 
-convex_sol = ConvexSolution.ConvexSol(
+jump_sol = JuMPSolution.JuMPSol(
     n,
-    Variable(n),
+    K,
     A,
     Q,
     q
 )
 
-convex_sol = ConvexSolution.compute_solution(convex_sol)
+jump_sol = JuMPSolution.compute_solution(jump_sol)
 
 println("Optimal value:")
-display(convex_sol.opt_val)
+display(jump_sol.opt_val)
 print("\n")
 
 #------------------------------------------------------#
 #----------     Create problem structs     ------------#
 #------------------------------------------------------#
 
-val = Utils.compute_lagrangian(Q, q, x, λ)[1]
+# val = Utils.compute_lagrangian(Q, q, x, λ)[1]
 
 #= 
     Check that we are not violating the lagrangian:
     compute new random values for x and λ to start in a feasible solution
 =#
-while (convex_sol.opt_val - val) < 0
-    global x
-    global λ
-    x = randn((n,1))
-    λ = abs.(randn((n,1)))
-    global val 
-    val = Utils.compute_lagrangian(Q, q, x, λ)[1]
-end
+# while (convex_sol.opt_val - val) < 0
+#     global x
+#     global λ
+#     x = randn((n,1))
+#     λ = abs.(randn((n,1)))
+#     global val 
+#     val = Utils.compute_lagrangian(Q, q, x, λ)[1]
+# end
 
 println("Starting x:")
 display(x)
@@ -255,7 +276,7 @@ solver_rule1 = ADAGRAD_Solver.Solver(
     Full_mat, # Full matrix KKT
     F, # Best factorization
     A, # Constraint matrix
-    convex_sol.opt_val # Primal optimal value
+    jump_sol.opt_val # Primal optimal value
 )
 
 solver_rule2 = ADAGRAD_Solver.Solver(
@@ -276,7 +297,7 @@ solver_rule2 = ADAGRAD_Solver.Solver(
     Full_mat, # Full matrix KKT
     F, # Best factorization
     A, # Constraint matrix
-    convex_sol.opt_val # Primal optimal value
+    jump_sol.opt_val # Primal optimal value
 )
 
 solver_rule3 = ADAGRAD_Solver.Solver(
@@ -297,7 +318,7 @@ solver_rule3 = ADAGRAD_Solver.Solver(
     Full_mat, # Full matrix KKT
     F, # Best factorization
     A, # Constraint matrix
-    convex_sol.opt_val # Primal optimal value
+    jump_sol.opt_val # Primal optimal value
 )
 
 #------------------------------------------------------#
@@ -338,7 +359,7 @@ print("\n")
 
 println("Duality gap between f( x* ) of Convex.jl and ϕ( λ ) (rule 1):")
 
-dual_gap = convex_sol.opt_val - optimal_dual
+dual_gap = jump_sol.opt_val - optimal_dual
 
 display(dual_gap)
 print("\n")
@@ -369,7 +390,7 @@ print("\n")
 
 println("Duality gap between f( x* ) of Convex.jl and ϕ( λ ) (rule 2):")
 
-dual_gap = convex_sol.opt_val - optimal_dual
+dual_gap = jump_sol.opt_val - optimal_dual
 
 display(dual_gap)
 print("\n")
@@ -401,7 +422,7 @@ print("\n")
 
 println("Duality gap between f( x* ) of Convex.jl and ϕ( λ ) (rule 3):")
 
-dual_gap = convex_sol.opt_val - optimal_dual
+dual_gap = jump_sol.opt_val - optimal_dual
 
 display(dual_gap)
 print("\n")
@@ -431,7 +452,6 @@ gr()
 solvers = [ solver_rule1, solver_rule2, solver_rule3 ]
 
 for i=1:1:3
-
 
     ticks = range( minimum(solvers[i].relaxation_values), maximum(solvers[i].relaxation_values), length = 5 )
     ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
@@ -467,7 +487,7 @@ for i=1:1:3
                 lw = 2,
                 dpi = 360,
                 xscale = :log10,
-                yscale = :log10,
+                # yscale = :log10,
                 linealpha = 0.5,
                 linecolor = :green,
                 minorticks = 5,

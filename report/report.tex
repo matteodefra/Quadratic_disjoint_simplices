@@ -272,7 +272,9 @@ First of all, we should recall some intuition in order to understand better the 
 Focusin on the algorithm \ref{alg:adagrad}, the chosen value of $s_{t,i}$ explain us why the particular choice of the proximal function $\Psi_t(x) = \frac{1}{2} \left\langle x,H_t x \right\rangle$ is so important. $s_{t,i}$ comes from the solution of the problem
 \[ \min_s \sum_{t=1}^T \sum_{i=1}^d \frac{g_{t,i}^2}{s_i} \text{ s.t. } s \succeq 0, \left\langle 1,s \right\rangle \le c \] 
 solved by optimizing the Lagrangian
-\[ \mathcal{L}(s,\lambda,\theta) = \sum_{i=1}^d \frac{\| g_{1:T,i} \|_2^2}{s_i} - \left\langle \lambda,s \right\rangle + \theta (\left\langle 1,s \right\rangle - c ) \]
+\[ 
+  \mathcal{L}(s,\lambda,\theta) = \sum_{i=1}^d \frac{\| g_{1:T,i} \|_2^2}{s_i} - \left\langle \lambda,s \right\rangle + \theta (\left\langle 1,s \right\rangle - c ) 
+\]
 Taking the partial derivatives to find the infimum of $\mathcal{L}$, and using the complementary slackness condition on $\lambda_i s_i$ imply that $\lambda_i = 0$. As a consequence, we obtain $s_i = c \| g_{1:T,i} \|_2 / \sum_{j=1}^d \| g_{1:T,j} \|_2$.
 Plugging this into the previous objective function, we get
 \[ \inf_s \left\lbrace \sum_{t=1}^T \sum_{i=1}^d \frac{g_{t,i}^2}{s_i} : s \succeq 0, \left\langle 1,s \right\rangle \le c \right\rbrace = \frac{1}{c} \left(\sum_{i=1}^d \| g_{1:T,i} \|_2 \right)^2  \]
@@ -706,6 +708,49 @@ Assuming we are at step $t$ of our iterations, then we will use the primal varia
   \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}} = - x_{t-1}
 \]
 
+
+\section{Appendix C: \texorpdfstring{$\gamma$}{TEXT} computation}
+
+In order to deflect our subgradient/gradient, we could solve the problem 
+\[
+  \gamma^i \in \argmin{ \{ \| \gamma g^i + (1 - \gamma) d^{i-1} \|^2 : \gamma \in \left[0,1\right] \} }   
+\]
+Hence we have to solve
+\begin{align*}
+  \frac{\partial}{\partial \gamma} \| \gamma g^i + (1 - \gamma) d^{i-1} \|^2
+\end{align*}
+which can be rewritten as
+\begin{align*}
+  \frac{\partial}{\partial \gamma} \sum_{k=1}^n (\gamma_k g_k^i + (1 - \gamma_k) d_k^{i-1})^2 = 0
+\end{align*}
+which result in the following vector
+\begin{gather*}
+  \begin{bmatrix}
+    \dfrac{\partial}{\partial \gamma_1} \sum_{k=1}^n (\gamma_k g_k^i + (1 - \gamma_k) d_k^{i-1})^2 \\[3ex]
+    \dfrac{\partial}{\partial \gamma_2} \sum_{k=1}^n (\gamma_k g_k^i + (1 - \gamma_k) d_k^{i-1})^2 \\[3ex]
+    \vdots \\[3ex]
+    \dfrac{\partial}{\partial \gamma_n} \sum_{k=1}^n (\gamma_k g_k^i + (1 - \gamma_k) d_k^{i-1})^2
+  \end{bmatrix}
+  = \boldsymbol{0} \boldsymbol{\implies} 
+  \begin{bmatrix}
+    \dfrac{\partial}{\partial \gamma_1} (\gamma_1 g_1^i + (1 - \gamma_1) d_1^{i-1})^2 \\[3ex]
+    \dfrac{\partial}{\partial \gamma_2} (\gamma_2 g_2^i + (1 - \gamma_2) d_2^{i-1})^2 \\[3ex]
+    \vdots \\[3ex]
+    \dfrac{\partial}{\partial \gamma_n} (\gamma_n g_n^i + (1 - \gamma_n) d_n^{i-1})^2
+  \end{bmatrix}
+  = \boldsymbol{0} \boldsymbol{\implies} \\[2ex]
+  \begin{bmatrix}
+    2 (\gamma_1 g_1^i + (1 - \gamma_1) d_1^{i-1}) (g_1^i - d_1^{i-1}) \\[3ex]
+    2 (\gamma_2 g_2^i + (1 - \gamma_2) d_2^{i-1}) (g_2^i - d_2^{i-1}) \\[3ex]
+    \vdots \\[3ex]
+    2 (\gamma_n g_n^i + (1 - \gamma_n) d_n^{i-1}) (g_n^i - d_n^{i-1})
+  \end{bmatrix}
+  = \boldsymbol{0}
+\end{gather*}
+Isolating each $\gamma_i$, we obtain the following compact value for $\gamma$
+\[
+  \gamma = \dfrac{ (d^{i-1})^2 - g^i }{ (g^i - d^{i-1})^2 }  
+\]
 
 
 \end{document}

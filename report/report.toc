@@ -12,3 +12,4 @@
 \contentsline {subsection}{\numberline {A.2}Derivation of primal-dual update}{13}{subsection.A.2}%
 \contentsline {subsection}{\numberline {A.3}Derivation of composite-mirror update}{14}{subsection.A.3}%
 \contentsline {section}{\numberline {B}Appendix B: subgradient computation}{15}{appendix.B}%
+\contentsline {section}{\numberline {C}Appendix C: $\gamma $ computation}{16}{appendix.C}%

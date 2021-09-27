@@ -21,6 +21,8 @@ mutable struct Solver
     G_t :: Diagonal{Float64, Vector{Float64}}
     s_t :: Array{Float64}
     avg_gradient :: Array{Float64}
+    d_i :: Array{Float64}
+    deflection :: Bool
     Q :: Matrix{Float64}
     q :: Array{Float64}
     η :: Float64
@@ -100,8 +102,16 @@ function compute_update_rule(solver, H_t)
         # Replace all the NaN values with 0.0 to avoid NaN values in the iterates
         replace!(G_t, NaN => 0.0)
 
-        λ = solver.λ + (solver.η * G_t * solver.grads[:,end])
+        if solver.deflection
+            
+            λ = solver.λ + (solver.η * G_t * solver.d_i)
         
+        else
+
+            λ = solver.λ + (solver.η * G_t * solver.grads[:,end])
+        
+        end
+
     elseif solver.update_formula == 2
 
         # Sum the latter subgradient found
@@ -114,8 +124,15 @@ function compute_update_rule(solver, H_t)
 
     else
 
-        update_part = solver.η * H_t^(-1) * solver.grads[:,end]
+        if solver.deflection
+    
+            update_part = solver.η * H_t^(-1) * solver.d_i#grads[:,end]
+    
+        else
 
+            update_part = solver.η * H_t^(-1) * solver.grads[:,end]
+
+        end
         # Plus needed: constrain λ to be bigger, we are maximizing the dual function
         λ = solver.λ - update_part
 
@@ -192,6 +209,22 @@ function x_norm(previous_x, current_x)
 
 end
 
+
+function compute_gamma(solver, subgrad, previous_d)
+
+    if solver.iteration == 1
+        
+        γ = ones((solver.n,1))
+    else 
+    
+        γ = ( previous_d.^(2) .- subgrad ) ./ ( subgrad .- previous_d ).^(2)
+    
+    end
+
+    return γ
+
+end
+
 #=
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
@@ -254,11 +287,23 @@ function my_ADAGRAD(solver)
         where the given x_{star} is computed at the previous step. As a consequence the L function
         is given by  
         
-            ∇_λ (x_{star}) ( - λ * x_{star} + constant )
+            ∇_λ (x_{star}) ( - λ * x_{star} )
             
         which is always differentiable since it is an hyperplane
         =#
         subgrad = get_grad(solver)
+
+        if solver.deflection
+
+            previous_d = isempty(solver.grads) ? subgrad : solver.d_i
+
+            γ = compute_gamma(solver, subgrad, previous_d)
+
+            solver.d_i = γ .* subgrad .+ (ones((solver.n,1)) .- γ) .* previous_d
+
+            replace!(solver.d_i, NaN => 0.0)
+
+        end
 
         # Store subgradient in matrix
         solver.grads = [solver.grads subgrad]
@@ -374,7 +419,7 @@ function my_ADAGRAD(solver)
     print("\n")
     print("Iterations: $(solver.iteration)\tTotal time: $(round(sum(solver.timings), digits=6))\n")
 
-    CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula).csv", df)
+    CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula)_defl=$(solver.deflection).csv", df)
 
     return solver
 

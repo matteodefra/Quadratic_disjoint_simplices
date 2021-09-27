@@ -43,11 +43,9 @@ Ang Andersen.
   Université de Mons,
   \url{https://angms.science/doc/CVX/Proj_nonnegBoxpoly.pdf}.
 
-\bibitem{convexjl}
-Madeleine Udell, Karanveer Mohan, David Zeng, Jenny Hong, Steven Diamond, and
-  Stephen Boyd.
-\newblock Convex optimization in {J}ulia.
-\newblock {\em SC14 Workshop on High Performance Technical Computing in Dynamic
-  Languages}, 2014.
+\bibitem{DunningHuchetteLubin2017}
+Iain Dunning, Joey Huchette, and Miles Lubin.
+\newblock Jump: A modeling language for mathematical optimization.
+\newblock {\em SIAM Review}, 59(2):295--320, 2017.
 
 \end{thebibliography}

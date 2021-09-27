@@ -1,15 +1,12 @@
 include("./ADAGRAD_Solver.jl")
 include("./Utils.jl")
-include("./ConvexSolution.jl")
 include("./JuMPSolution.jl")
 
 using LinearAlgebra
 using Random
-using Convex
 using .Utils
 using .ADAGRAD_Solver
 # Compute the solution of Convex.jl
-using .ConvexSolution
 using .JuMPSolution
 
 
@@ -80,8 +77,9 @@ display(I_K)
 print("\n")
 
 # Initialize x iterates to ones
-x = ones((n,1))
+x = randn((n,1))#ones((n,1))
 
+# Feasible x
 for set in I_K
     for val in set
         x[val] = 1/length(set)
@@ -108,9 +106,6 @@ while r < n
     display(r)
 end
 
-# Construct covariace matrix and add identity to have A_H ≻ 0
-# A_H = A_help' * A_help + I 
-
 # Compute the inverse 
 A_help_inv = inv(A_help)
 
@@ -126,7 +121,7 @@ A_help_inv = inv(A_help)
 vect = abs.(randn((n,1)))
 
 # Random number used to set zeros
-prob = abs(rand())
+prob = 0.4#abs(rand())
 
 if prob > 0.5
     println("Prob greater than zero")
@@ -154,7 +149,7 @@ vect = vec(vect)
 Q = A_help * Diagonal(vect) * A_help_inv
 # Q = A_help' * A_help
 
-# Garbage collector
+# Garbage collector: free up some memory
 vect = nothing
 A_help = nothing
 A_help_inv = nothing
@@ -263,7 +258,10 @@ solver_rule1 = ADAGRAD_Solver.Solver(
     Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
     Array{Float64}(undef, n, 1), # s_t
     Array{Float64}(undef, n, 1), # avg_gradient
-    Q, q, η, δ, max_iter, ϵ, τ,
+    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+    0, # best_iteration
+    x, # best_x
+    λ, # best_λ
     Vector{Float64}(), # num_iterations
     Vector{Float64}(), # relaxation_values
     Array{Float64}(undef, n, 0), # x_values
@@ -284,7 +282,10 @@ solver_rule2 = ADAGRAD_Solver.Solver(
     Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
     Array{Float64}(undef, n, 1), # s_t
     Array{Float64}(undef, n, 1), # avg_gradient
-    Q, q, η, δ, max_iter, ϵ, τ, 
+    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+    0, # best_iteration
+    x, # best_x
+    λ, # best_λ
     Vector{Float64}(), # num_iterations
     Vector{Float64}(), # relaxation_values
     Array{Float64}(undef, n, 0), # x_values
@@ -305,7 +306,10 @@ solver_rule3 = ADAGRAD_Solver.Solver(
     Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
     Array{Float64}(undef, n, 1), # s_t
     Array{Float64}(undef, n, 1), # avg_gradient
-    Q, q, η, δ, max_iter, ϵ, τ,
+    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+    0, # best_iteration
+    x, # best_x
+    λ, # best_λ
     Vector{Float64}(), # num_iterations
     Vector{Float64}(), # relaxation_values
     Array{Float64}(undef, n, 0), # x_values
@@ -344,28 +348,26 @@ print("\n\n\n\n")
 print("------------------- Rule 1 results -------------------\n\n")
 
 println("Optimal x found (rule 1):")
-display(solver_rule1.x)
+display(solver_rule1.best_x)
 print("\n")
 
 println("Optimal λ found (rule 1):")
-display(solver_rule1.λ)
+display(solver_rule1.best_λ)
 print("\n")
 
-optimal_dual = ADAGRAD_Solver.lagrangian_relaxation(solver_rule1, solver_rule1.x, solver_rule1.λ)[1]
-
-println("Value of the lagrangian function (rule 1):")
-display(optimal_dual)
+println("Best value of lagrangian at iteration $(solver_rule1.best_iteration) (rule 1):")
+display(solver_rule1.best_lagrangian)
 print("\n")
 
-println("Duality gap between f( x* ) of Convex.jl and ϕ( λ ) (rule 1):")
+println("Duality gap between f( x* ) and ϕ( λ ) (rule 1):")
 
-dual_gap = jump_sol.opt_val - optimal_dual
+dual_gap = jump_sol.opt_val - solver_rule1.best_lagrangian
 
 display(dual_gap)
 print("\n")
 
 gaps["Rule 1"] = dual_gap
-L_values["Rule 1"] = optimal_dual
+L_values["Rule 1"] = solver_rule1.best_lagrangian
 
 #------------------------------------------------------#
 #-----------     Results for rule 2     ---------------#
@@ -375,28 +377,26 @@ print("\n\n\n\n")
 print("------------------- Rule 2 results -------------------\n\n")
 
 println("Optimal x found (rule 2):")
-display(solver_rule2.x)
+display(solver_rule2.best_x)
 print("\n")
 
 println("Optimal λ found (rule 2):")
-display(solver_rule2.λ)
+display(solver_rule2.best_λ)
 print("\n")
 
-optimal_dual = ADAGRAD_Solver.lagrangian_relaxation(solver_rule2, solver_rule2.x, solver_rule2.λ)[1]
-
-println("Value of the lagrangian function (rule 2):")
-display(optimal_dual)
+println("Best value of lagrangian at iteration $(solver_rule2.best_iteration) (rule 2):")
+display(solver_rule2.best_lagrangian)
 print("\n")
 
-println("Duality gap between f( x* ) of Convex.jl and ϕ( λ ) (rule 2):")
+println("Duality gap between f( x* ) and ϕ( λ ) (rule 2):")
 
-dual_gap = jump_sol.opt_val - optimal_dual
+dual_gap = jump_sol.opt_val - solver_rule2.best_lagrangian
 
 display(dual_gap)
 print("\n")
 
 gaps["Rule 2"] = dual_gap
-L_values["Rule 2"] = optimal_dual
+L_values["Rule 2"] = solver_rule2.best_lagrangian
 
 #------------------------------------------------------#
 #-----------     Results for rule 3     ---------------#
@@ -407,28 +407,26 @@ print("------------------- Rule 3 results -------------------\n\n")
 
 
 println("Optimal x found (rule 3):")
-display(solver_rule3.x)
+display(solver_rule3.best_x)
 print("\n")
 
 println("Optimal λ found (rule 3):")
-display(solver_rule3.λ)
+display(solver_rule3.best_λ)
 print("\n")
 
-optimal_dual = ADAGRAD_Solver.lagrangian_relaxation(solver_rule3, solver_rule3.x, solver_rule3.λ)[1]
-
-println("Value of the lagrangian function (rule 3):")
-display(optimal_dual)
+println("Best value of lagrangian at iteration $(solver_rule3.best_iteration) (rule 3):")
+display(solver_rule3.best_lagrangian)
 print("\n")
 
-println("Duality gap between f( x* ) of Convex.jl and ϕ( λ ) (rule 3):")
+println("Duality gap between f( x* ) and ϕ( λ ) (rule 3):")
 
-dual_gap = jump_sol.opt_val - optimal_dual
+dual_gap = jump_sol.opt_val - solver_rule3.best_lagrangian
 
 display(dual_gap)
 print("\n")
 
 gaps["Rule 3"] = dual_gap
-L_values["Rule 3"] = optimal_dual
+L_values["Rule 3"] = solver_rule3.best_lagrangian
 
 print("\n\n")
 
@@ -442,7 +440,6 @@ display(L_values)
 #-----------     Plotting utilities     ---------------#
 #------------------------------------------------------#
 
-# using DataFrames
 using Plots
 
 Plots.theme(:ggplot2)

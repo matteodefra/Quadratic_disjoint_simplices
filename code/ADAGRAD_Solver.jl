@@ -28,6 +28,10 @@ mutable struct Solver
     max_iter :: Int
     ϵ :: Float64
     τ :: Float64
+    best_lagrangian :: Float64
+    best_iteration :: Int64
+    best_x :: Array{Float64}
+    best_λ :: Array{Float64}
     num_iterations :: Vector{Float64}
     relaxation_values :: Vector{Float64}
     x_values :: Array{Float64}
@@ -74,6 +78,7 @@ end
         λ_t = λ_{t-1} + η H_{t-1}^{-1} g_t
 
 =#
+# PROVARE CON -
 function compute_update_rule(solver, H_t)
     
     if solver.update_formula == 1
@@ -112,7 +117,7 @@ function compute_update_rule(solver, H_t)
         update_part = solver.η * H_t^(-1) * solver.grads[:,end]
 
         # Plus needed: constrain λ to be bigger, we are maximizing the dual function
-        λ = solver.λ + update_part
+        λ = solver.λ - update_part
 
     end
 
@@ -125,7 +130,7 @@ end
 
 #=
     Check the other stopping condition, i.e. when
-        \| λ_t - λ_{t-1} \|_2 ≤ ϵ 
+        ∥ λ_t - λ_{t-1} ∥_2 ≤ ϵ 
     whenever this condition is met we have reached an optimal value of multipliers λ,
     hence we met complementary slackness and we can stop
 =#
@@ -173,7 +178,7 @@ end
 #=
     Compute 
 
-        \| x_t - x_{t-1} \|_2
+        ∥ x_t - x_{t-1} ∥_2
     
     for the sake of log and visualization
 =#
@@ -192,7 +197,6 @@ end
     presented in the report.
     Takes as parameters:
         @param solver: struct solver containing all the required data structures
-        @param update_rule: an integer specifying what update rule to use for the λ's
 =#  
 function my_ADAGRAD(solver)
 
@@ -208,11 +212,18 @@ function my_ADAGRAD(solver)
 
     solver.iteration = 0
 
-    L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
+    L_val = lagrangian_relaxation(solver, solver.x, solver.λ)[1]
 
-    current_gap = solver.Off_the_shelf_primal - L_val[1]
+    current_gap = solver.Off_the_shelf_primal - L_val
 
-    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration 0.00000000 L_val[1] norm(solver.x) norm(solver.λ) current_gap
+    if current_gap > 0 && L_val > solver.best_lagrangian
+        solver.best_lagrangian = L_val
+        solver.best_iteration = 0
+        solver.best_x = solver.x
+        solver.best_λ = solver.λ
+    end
+
+    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration 0.00000000 L_val norm(solver.x) norm(solver.λ) current_gap
 
     while solver.iteration < solver.max_iter
 
@@ -298,9 +309,6 @@ function my_ADAGRAD(solver)
         # Compute Lagrangian function value
         L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
 
-        # println("Lagrangian relaxation value: $(L_val[1])")
-        # print("\n")
-
         # Storing current relaxation value
         push!(solver.relaxation_values, L_val[1])
 
@@ -325,6 +333,13 @@ function my_ADAGRAD(solver)
         # Compute current dual_gap
         current_gap = solver.Off_the_shelf_primal - solver.relaxation_values[end]
 
+        if L_val[1] > solver.best_lagrangian && current_gap > 0
+            solver.best_lagrangian = L_val[1]
+            solver.best_iteration = solver.iteration
+            solver.best_x = solver.x
+            solver.best_λ = solver.λ
+        end
+
         # Store the current gap
         push!(solver.gaps, current_gap)
 
@@ -339,23 +354,7 @@ function my_ADAGRAD(solver)
             # Log result of the current iteration
             @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
             push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
-            break  
-        # elseif current_gap < 0
-        #     # If the gap becomes negative (matter of numbers) exclude last iteration and consider previous one
-        #     println("Found negative dual gap")
-        #     # Clean vectors
-        #     solver.λ = previous_λ
-        #     solver.x = previous_x
-        #     # pop!(solver.num_iterations)
-        #     # pop!(solver.relaxation_values)
-        #     # pop!(solver.x_distances)
-        #     # pop!(solver.timings)
-        #     # pop!(solver.gaps)
-        #     # pop!(solver.λ_distances)
-        #     # Log result of the previous iteration
-        #     @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
-        #     push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
-        #     break 
+            break   
         end
 
         if (solver.iteration == 1) || (solver.iteration % 10 == 0)

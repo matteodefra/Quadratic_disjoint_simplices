@@ -12,7 +12,7 @@ mutable struct JuMPSol
     Q :: Matrix{Float64}
     q :: Array{Float64}
     opt_val :: Float64
-    JuMPSol(n, x, A, Q, q) = new(n, x, A, Q, q)
+    JuMPSol(n, K, A, Q, q) = new(n, K, A, Q, q)
 end
 
 

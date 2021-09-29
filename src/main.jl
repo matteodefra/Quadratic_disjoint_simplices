@@ -11,566 +11,582 @@ using .ADAGRAD_Solver
 using .JuMPSolution
 
 
-#------------------------------------------------------#
-#---------     Initialize all parameters    -----------#
-#------------------------------------------------------#
+function testing(n_list, K_list, deflections)
 
-# n_list = [10, 25, 50, 100, 250]
-# K_list = [[3, 5, 7], [7, 13, 19], [12, 25, 37], [25, 50, 75], [63, 125, 188]]
-n_list = [50, 100, 250]
-K_list = [[12, 25, 37], [25, 50, 75], [63, 125, 188]]
+    for (n, Ks) in zip(n_list, K_list)
 
+        for K in Ks
 
-# print("Enter desired dimension n: ")
-# n = readline()
-# n = parse(Int64, n)
+            for deflection in deflections
 
-# print("Enter K value of disjoint simplices (K le n): ")
-# K = readline()
-# K = parse(Int64, K)
+                println("Initializing random disjoint sets")
 
-# # Simple utility loop to check K value 
-# while K > n
-#     print("K greater than n, input correct value: ")
-#     global K 
-#     K = readline()
-#     K = parse(Int64, K)
-# end
+                # Indexes to access the different x_i
+                global indexes = collect(1:1:n)
 
-# println("Value of K is correct")
-
-for (n, Ks) in zip(n_list, K_list)
-
-    for K in Ks
-
-        for deflection in [true, false]
-
-            println("Initializing random disjoint sets")
-
-            # Indexes to access the different x_i
-            global indexes = collect(1:1:n)
-
-            # Utility function to create the different sets I^k given the number of sets K
-            function initialize_sets(indexes, K, n)
-                # Put at least one element in each set I^k
-                instances = ones(Int64, K)
-                # Distribute the remaining values randomly inside instances
-                remaining = n - K
-                while remaining > 0
-                    Random.seed!(abs(rand(Int,1)[1]))
-                    random_index = rand(1:K)
-                    instances[random_index] += 1
-                    remaining -= 1
-                end
-                # Create empty multinensional Array
-                I = Vector{Array{Int64,1}}()
-                # Iterate through the required cardinality of each index set
-                for value in instances
-                    tmp = value
-                    values = []        
-                    # Shuffle each time the index array and put the value inside the current set I^k
-                    while tmp > 0
-                        shuffle!(indexes)
-                        push!(values, pop!(indexes)) 
-                        tmp -= 1
+                # Utility function to create the different sets I^k given the number of sets K
+                function initialize_sets(indexes, K, n)
+                    # Put at least one element in each set I^k
+                    instances = ones(Int64, K)
+                    # Distribute the remaining values randomly inside instances
+                    remaining = n - K
+                    while remaining > 0
+                        Random.seed!(abs(rand(Int,1)[1]))
+                        random_index = rand(1:K)
+                        instances[random_index] += 1
+                        remaining -= 1
                     end
-                    # Add the current I^k to I
-                    push!(I, values)
+                    # Create empty multinensional Array
+                    I = Vector{Array{Int64,1}}()
+                    # Iterate through the required cardinality of each index set
+                    for value in instances
+                        tmp = value
+                        values = []        
+                        # Shuffle each time the index array and put the value inside the current set I^k
+                        while tmp > 0
+                            shuffle!(indexes)
+                            push!(values, pop!(indexes)) 
+                            tmp -= 1
+                        end
+                        # Add the current I^k to I
+                        push!(I, values)
+                    end
+                    return I
                 end
-                return I
-            end
 
-            # I_K contains all the I^k required to create the simplices constraints
-            global I_K = initialize_sets(indexes, K, n)
+                # I_K contains all the I^k required to create the simplices constraints
+                global I_K = initialize_sets(indexes, K, n)
 
-            indexes = nothing
+                indexes = nothing
 
-            println("Set of I_K arrays:")
-            display(I_K)
-            print("\n")
+                println("Set of I_K arrays:")
+                display(I_K)
+                print("\n")
 
-            # Initialize x iterates to ones
-            global x = randn((n,1))#ones((n,1))
+                # Initialize x iterates to ones
+                global x = randn((n,1))#ones((n,1))
 
-            # Feasible x
-            for set in I_K
-                for val in set
-                    x[val] = 1/length(set)
+                # Feasible x
+                for set in I_K
+                    for val in set
+                        x[val] = 1/length(set)
+                    end
                 end
-            end
 
-            # Initialize λ iterates to ones
-            global λ = ones((n,1))./1e1
+                # Initialize λ iterates to ones
+                global λ = ones((n,1))./1e1
 
-            # # Create random matrix A_help
-            global A_help = randn(Float64 ,n, n)
+                # # Create random matrix A_help
+                global A_help = randn(Float64 ,n, n)
 
-            global r = rank(A_help)
+                global r = rank(A_help)
 
-            println("Matrix rank:")
-            display(r)
-
-            while r < n
-                global A_help
-                global r
-                A_help = randn(Float64 ,n, n)
-                r = rank(A_help)
                 println("Matrix rank:")
                 display(r)
-            end
 
-            # Compute the inverse 
-            global A_help_inv = inv(A_help)
-
-            #=
-                Construct Q using a surely nonsingular matrix A_H using positive random eigenvalues.
-                A random probability number is used to set an eigenvalue as 0 or not,
-                to manage positive semidefinite or positive definite case.
-                If prob > 0.5 ⟹ some given numbers of eigenvalues are set to 0
-                Else ⟹ Q is created as positive definite 
-            =#
-
-            # Eigenvalues of Q
-            global vect = abs.(randn((n,1)))
-
-            # Random number used to set zeros
-            global prob = 0.4#abs(rand())
-
-            if prob > 0.5
-                println("Prob greater than zero")
-
-                # Random number of zeros to set
-                global eigens = rand(1:n-1)
-
-                # Loop over vect and modify eigenvalues
-                global ind = 0
-                
-                while eigens > 0
-                    vect[end - ind] = 0.0
-                    global ind
-                    global eigens
-                    ind += 1
-                    eigens -= 1    
+                while r < n
+                    global A_help
+                    global r
+                    A_help = randn(Float64 ,n, n)
+                    r = rank(A_help)
+                    println("Matrix rank:")
+                    display(r)
                 end
 
-                display(vect)
+                # Compute the inverse 
+                global A_help_inv = inv(A_help)
 
-            end
+                #=
+                    Construct Q using a surely nonsingular matrix A_H using positive random eigenvalues.
+                    A random probability number is used to set an eigenvalue as 0 or not,
+                    to manage positive semidefinite or positive definite case.
+                    If prob > 0.5 ⟹ some given numbers of eigenvalues are set to 0
+                    Else ⟹ Q is created as positive definite 
+                =#
 
-            global vect = vec(vect)
+                # Eigenvalues of Q
+                global vect = abs.(randn((n,1)))
 
-            global Q = A_help * Diagonal(vect) * A_help_inv
-            # Q = A_help' * A_help
+                # Random number used to set zeros
+                global prob = 0.4#abs(rand())
 
-            print(isposdef(Q))
+                if prob > 0.5
+                    println("Prob greater than zero")
 
-            # Garbage collector: free up some memory
-            vect = nothing
-            A_help = nothing
-            A_help_inv = nothing
-            GC.gc()
+                    # Random number of zeros to set
+                    global eigens = rand(1:n-1)
 
-            println("Q matrix:")
-            display(Q)
-            print("\n")
-
-            # Initialize also random q vector 
-            q = randn(Float64, (n,1))
-
-            println("q vector:")
-            display(q)
-            print("\n")
-
-            # Initialize η
-            η = 1
-
-            # Initialize δ
-            δ = abs(rand())
-
-            # Initialize max_iter
-            max_iter = 100000
-
-            # Initialize ϵ
-            ϵ = 1e-6
-
-            # Initialize τ
-            τ = 1e-1
-
-            A = Utils.construct_A(K, n, I_K)
-
-            println("A constraint matrix:")
-            display(A)
-            print("\n")
-
-            Full_mat = Utils.construct_full_matrix(Q, A, K)
-
-            println("Full matrix:")
-            display(Full_mat)
-            print("\n")
-
-            #= 
-                Let Julia automatically determine the best factorization:
+                    # Loop over vect and modify eigenvalues
+                    global ind = 0
                     
-                    Cholesky ( if Full_mat ≻ 0 )
-                    Bunch-Kaufman ( if Q=Q^T )
-                    pivoted LU ( otherwise )
-            =#
-            # Lu factorization (unless Full_mat is symmetric)
-            F = factorize(Full_mat)
+                    while eigens > 0
+                        vect[end - ind] = 0.0
+                        global ind
+                        global eigens
+                        ind += 1
+                        eigens -= 1    
+                    end
 
-            println("Factorization:")
-            display(F)
-            print("\n")
+                    display(vect)
 
-            #------------------------------------------------------#
-            #-----    Use JuMP.jl to compute primal solution   ----#
-            #------------------------------------------------------#
+                end
 
-            jump_sol = JuMPSolution.JuMPSol(
-                n,
-                K,
-                A,
-                Q,
-                q
-            )
+                global vect = vec(vect)
 
-            jump_sol = JuMPSolution.compute_solution(jump_sol)
+                # global Q = A_help * Diagonal(vect) * A_help_inv
+                global Q = A_help' * A_help
 
-            println("Optimal value:")
-            display(jump_sol.opt_val)
-            print("\n")
+                # Garbage collector: free up some memory
+                vect = nothing
+                A_help = nothing
+                A_help_inv = nothing
+                GC.gc()
 
-            #------------------------------------------------------#
-            #----------     Create problem structs     ------------#
-            #------------------------------------------------------#
+                println("Q matrix:")
+                display(Q)
+                print("\n")
 
-            # val = Utils.compute_lagrangian(Q, q, x, λ)[1]
+                # Initialize also random q vector 
+                q = randn(Float64, (n,1))
 
-            #= 
-                Check that we are not violating the lagrangian:
-                compute new random values for x and λ to start in a feasible solution
-            =#
-            # while (convex_sol.opt_val - val) < 0
-            #     global x
-            #     global λ
-            #     x = randn((n,1))
-            #     λ = abs.(randn((n,1)))
-            #     global val 
-            #     val = Utils.compute_lagrangian(Q, q, x, λ)[1]
-            # end
+                println("q vector:")
+                display(q)
+                print("\n")
 
-            println("Starting x:")
-            display(x)
-            print("\n")
+                # Initialize η
+                η = 1
 
-            println("Starting λs:")
-            display(λ)
-            print("\n")
+                # Initialize δ
+                δ = abs(rand())
 
-            # Create three different struct to exploit the three update rule
-            solver_rule1 = ADAGRAD_Solver.Solver(
-                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-                Array{Float64}(undef, n, 1), # s_t
-                Array{Float64}(undef, n, 1), # avg_gradient
-                Array{Float64}(undef, n, 1), # d_i
-                deflection, # deflection
-                Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
-                0, # best_iteration
-                x, # best_x
-                λ, # best_λ
-                Vector{Float64}(), # num_iterations
-                Vector{Float64}(), # relaxation_values
-                Array{Float64}(undef, n, 0), # x_values
-                Array{Float64}(undef, n, 0), # λ_values
-                Vector{Float64}(), # λ_distances
-                Vector{Float64}(), # x_distances
-                Vector{Float64}(), # timings
-                Vector{Float64}(), # gaps
-                1, # update_rule
-                Full_mat, # Full matrix KKT
-                F, # Best factorization
-                A, # Constraint matrix
-                jump_sol.opt_val # Primal optimal value
-            )
+                # Initialize max_iter
+                max_iter = 100000
 
-            solver_rule2 = ADAGRAD_Solver.Solver(
-                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-                Array{Float64}(undef, n, 1), # s_t
-                Array{Float64}(undef, n, 1), # avg_gradient
-                Array{Float64}(undef, n, 1), # d_i
-                deflection, # deflection
-                Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
-                0, # best_iteration
-                x, # best_x
-                λ, # best_λ
-                Vector{Float64}(), # num_iterations
-                Vector{Float64}(), # relaxation_values
-                Array{Float64}(undef, n, 0), # x_values
-                Array{Float64}(undef, n, 0), # λ_values
-                Vector{Float64}(), # λ_distances
-                Vector{Float64}(), # x_distances
-                Vector{Float64}(), # timings
-                Vector{Float64}(), # gaps
-                2, # update_rule
-                Full_mat, # Full matrix KKT
-                F, # Best factorization
-                A, # Constraint matrix
-                jump_sol.opt_val # Primal optimal value
-            )
+                # Initialize ϵ
+                ϵ = 1e-6
 
-            solver_rule3 = ADAGRAD_Solver.Solver(
-                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-                Array{Float64}(undef, n, 1), # s_t
-                Array{Float64}(undef, n, 1), # avg_gradient
-                Array{Float64}(undef, n, 1), # d_i
-                deflection, # deflection
-                Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
-                0, # best_iteration
-                x, # best_x
-                λ, # best_λ
-                Vector{Float64}(), # num_iterations
-                Vector{Float64}(), # relaxation_values
-                Array{Float64}(undef, n, 0), # x_values
-                Array{Float64}(undef, n, 0), # λ_values
-                Vector{Float64}(), # λ_distances
-                Vector{Float64}(), # x_distance
-                Vector{Float64}(), # timings
-                Vector{Float64}(), # gaps
-                3, # update_rule
-                Full_mat, # Full matrix KKT
-                F, # Best factorization
-                A, # Constraint matrix
-                jump_sol.opt_val # Primal optimal value
-            )
+                # Initialize τ
+                τ = 1e-1
 
-            #------------------------------------------------------#
-            #--------     Calculate custom solution     -----------#
-            #------------------------------------------------------#
+                A = Utils.construct_A(K, n, I_K)
 
+                println("A constraint matrix:")
+                display(A)
+                print("\n")
 
-            # Now calculate the results of ADAGRAD in the three different fashion way
-            solver_rule1 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule1)
+                Full_mat = Utils.construct_full_matrix(Q, A, K)
 
-            solver_rule2 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule2)
+                println("Full matrix:")
+                display(Full_mat)
+                print("\n")
 
-            solver_rule3 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule3)
+                #= 
+                    Let Julia automatically determine the best factorization:
+                        
+                        Cholesky ( if Full_mat ≻ 0 )
+                        Bunch-Kaufman ( if Q=Q^T )
+                        pivoted LU ( otherwise )
+                =#
+                # Lu factorization (unless Full_mat is symmetric)
+                F = factorize(Full_mat)
 
-            gaps = Dict{String,Float64}()
-            L_values = Dict{String,Float64}()
+                println("Factorization:")
+                display(F)
+                print("\n")
 
-            #------------------------------------------------------#
-            #-----------     Results for rule 1     ---------------#
-            #------------------------------------------------------#
+                #------------------------------------------------------#
+                #-----    Use JuMP.jl to compute primal solution   ----#
+                #------------------------------------------------------#
 
-            print("\n\n\n\n")
-            print("------------------- Rule 1 results -------------------\n\n")
+                jump_sol = JuMPSolution.JuMPSol(
+                    n,
+                    K,
+                    A,
+                    Q,
+                    q
+                )
 
-            println("Optimal x found (rule 1):")
-            display(solver_rule1.best_x)
-            print("\n")
+                jump_sol = JuMPSolution.compute_solution(jump_sol)
 
-            println("Optimal λ found (rule 1):")
-            display(solver_rule1.best_λ)
-            print("\n")
+                println("Optimal value:")
+                display(jump_sol.opt_val)
+                print("\n")
 
-            println("Best value of lagrangian at iteration $(solver_rule1.best_iteration) (rule 1):")
-            display(solver_rule1.best_lagrangian)
-            print("\n")
+                #------------------------------------------------------#
+                #----------     Create problem structs     ------------#
+                #------------------------------------------------------#
 
-            println("Duality gap between f( x* ) and ϕ( λ ) (rule 1):")
+                # val = Utils.compute_lagrangian(Q, q, x, λ)[1]
 
-            dual_gap = jump_sol.opt_val - solver_rule1.best_lagrangian
+                #= 
+                    Check that we are not violating the lagrangian:
+                    compute new random values for x and λ to start in a feasible solution
+                =#
+                # while (convex_sol.opt_val - val) < 0
+                #     global x
+                #     global λ
+                #     x = randn((n,1))
+                #     λ = abs.(randn((n,1)))
+                #     global val 
+                #     val = Utils.compute_lagrangian(Q, q, x, λ)[1]
+                # end
 
-            display(dual_gap)
-            print("\n")
+                println("Starting x:")
+                display(x)
+                print("\n")
 
-            gaps["Rule 1"] = dual_gap
-            L_values["Rule 1"] = solver_rule1.best_lagrangian
+                println("Starting λs:")
+                display(λ)
+                print("\n")
 
-            #------------------------------------------------------#
-            #-----------     Results for rule 2     ---------------#
-            #------------------------------------------------------#
+                # Create three different struct to exploit the three update rule
+                solver_rule1 = ADAGRAD_Solver.Solver(
+                    n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                    Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+                    Array{Float64}(undef, n, 1), # s_t
+                    Array{Float64}(undef, n, 1), # avg_gradient
+                    Array{Float64}(undef, n, 1), # d_i
+                    deflection, # deflection
+                    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+                    0, # best_iteration
+                    x, # best_x
+                    λ, # best_λ
+                    Vector{Float64}(), # num_iterations
+                    Vector{Float64}(), # relaxation_values
+                    Array{Float64}(undef, n, 0), # x_values
+                    Array{Float64}(undef, n, 0), # λ_values
+                    Vector{Float64}(), # λ_distances
+                    Vector{Float64}(), # x_distances
+                    Vector{Float64}(), # timings
+                    Vector{Float64}(), # gaps
+                    1, # update_rule
+                    Full_mat, # Full matrix KKT
+                    F, # Best factorization
+                    A, # Constraint matrix
+                    jump_sol.opt_val # Primal optimal value
+                )
 
-            print("\n\n\n\n")
-            print("------------------- Rule 2 results -------------------\n\n")
+                solver_rule2 = ADAGRAD_Solver.Solver(
+                    n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                    Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+                    Array{Float64}(undef, n, 1), # s_t
+                    Array{Float64}(undef, n, 1), # avg_gradient
+                    Array{Float64}(undef, n, 1), # d_i
+                    deflection, # deflection
+                    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+                    0, # best_iteration
+                    x, # best_x
+                    λ, # best_λ
+                    Vector{Float64}(), # num_iterations
+                    Vector{Float64}(), # relaxation_values
+                    Array{Float64}(undef, n, 0), # x_values
+                    Array{Float64}(undef, n, 0), # λ_values
+                    Vector{Float64}(), # λ_distances
+                    Vector{Float64}(), # x_distances
+                    Vector{Float64}(), # timings
+                    Vector{Float64}(), # gaps
+                    2, # update_rule
+                    Full_mat, # Full matrix KKT
+                    F, # Best factorization
+                    A, # Constraint matrix
+                    jump_sol.opt_val # Primal optimal value
+                )
 
-            println("Optimal x found (rule 2):")
-            display(solver_rule2.best_x)
-            print("\n")
+                solver_rule3 = ADAGRAD_Solver.Solver(
+                    n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                    Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+                    Array{Float64}(undef, n, 1), # s_t
+                    Array{Float64}(undef, n, 1), # avg_gradient
+                    Array{Float64}(undef, n, 1), # d_i
+                    deflection, # deflection
+                    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+                    0, # best_iteration
+                    x, # best_x
+                    λ, # best_λ
+                    Vector{Float64}(), # num_iterations
+                    Vector{Float64}(), # relaxation_values
+                    Array{Float64}(undef, n, 0), # x_values
+                    Array{Float64}(undef, n, 0), # λ_values
+                    Vector{Float64}(), # λ_distances
+                    Vector{Float64}(), # x_distance
+                    Vector{Float64}(), # timings
+                    Vector{Float64}(), # gaps
+                    3, # update_rule
+                    Full_mat, # Full matrix KKT
+                    F, # Best factorization
+                    A, # Constraint matrix
+                    jump_sol.opt_val # Primal optimal value
+                )
 
-            println("Optimal λ found (rule 2):")
-            display(solver_rule2.best_λ)
-            print("\n")
-
-            println("Best value of lagrangian at iteration $(solver_rule2.best_iteration) (rule 2):")
-            display(solver_rule2.best_lagrangian)
-            print("\n")
-
-            println("Duality gap between f( x* ) and ϕ( λ ) (rule 2):")
-
-            dual_gap = jump_sol.opt_val - solver_rule2.best_lagrangian
-
-            display(dual_gap)
-            print("\n")
-
-            gaps["Rule 2"] = dual_gap
-            L_values["Rule 2"] = solver_rule2.best_lagrangian
-
-            #------------------------------------------------------#
-            #-----------     Results for rule 3     ---------------#
-            #------------------------------------------------------#
-
-            print("\n\n\n\n")
-            print("------------------- Rule 3 results -------------------\n\n")
+                #------------------------------------------------------#
+                #--------     Calculate custom solution     -----------#
+                #------------------------------------------------------#
 
 
-            println("Optimal x found (rule 3):")
-            display(solver_rule3.best_x)
-            print("\n")
+                # Now calculate the results of ADAGRAD in the three different fashion way
+                solver_rule1 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule1)
 
-            println("Optimal λ found (rule 3):")
-            display(solver_rule3.best_λ)
-            print("\n")
+                solver_rule2 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule2)
 
-            println("Best value of lagrangian at iteration $(solver_rule3.best_iteration) (rule 3):")
-            display(solver_rule3.best_lagrangian)
-            print("\n")
+                solver_rule3 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule3)
 
-            println("Duality gap between f( x* ) and ϕ( λ ) (rule 3):")
+                gaps = Dict{String,Float64}()
+                L_values = Dict{String,Float64}()
 
-            dual_gap = jump_sol.opt_val - solver_rule3.best_lagrangian
+                #------------------------------------------------------#
+                #-----------     Results for rule 1     ---------------#
+                #------------------------------------------------------#
 
-            display(dual_gap)
-            print("\n")
+                print("\n\n\n\n")
+                print("------------------- Rule 1 results -------------------\n\n")
 
-            gaps["Rule 3"] = dual_gap
-            L_values["Rule 3"] = solver_rule3.best_lagrangian
+                println("Optimal x found (rule 1):")
+                display(solver_rule1.best_x)
+                print("\n")
 
-            print("\n\n")
+                println("Optimal λ found (rule 1):")
+                display(solver_rule1.best_λ)
+                print("\n")
 
-            println("Gaps:")
-            display(gaps)
-            print("\n")
-            println("Lagrangian values:")
-            display(L_values)
+                println("Best value of lagrangian at iteration $(solver_rule1.best_iteration) (rule 1):")
+                display(solver_rule1.best_lagrangian)
+                print("\n")
 
-            #------------------------------------------------------#
-            #-----------     Plotting utilities     ---------------#
-            #------------------------------------------------------#
+                println("Duality gap between f( x* ) and ϕ( λ ) (rule 1):")
 
-            Plots.theme(:ggplot2)
+                dual_gap = jump_sol.opt_val - solver_rule1.best_lagrangian
 
-            gr()
+                display(dual_gap)
+                print("\n")
 
-            solvers = [ solver_rule1, solver_rule2, solver_rule3 ]
+                gaps["Rule 1"] = dual_gap
+                L_values["Rule 1"] = solver_rule1.best_lagrangian
 
-            for i=1:1:3
+                #------------------------------------------------------#
+                #-----------     Results for rule 2     ---------------#
+                #------------------------------------------------------#
 
-                ticks = range( minimum(solvers[i].relaxation_values), maximum(solvers[i].relaxation_values), length = 5 )
-                ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+                print("\n\n\n\n")
+                print("------------------- Rule 2 results -------------------\n\n")
 
-                plt = plot( solvers[i].num_iterations, 
-                            solvers[i].relaxation_values, 
-                            title = "Lagrangian value update=$(solvers[i].update_formula)", 
-                            titlefontsize = 12,
-                            label = "Lagrangian", 
-                            lw = 2,
-                            dpi = 360,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            xscale = :log10,
-                            minorticks = 5,
-                            legend = :bottomright,
-                            yticks = ( ticks, ticks_string ),
-                            tickfontsize = 6,
-                            guidefontsize = 9,
-                            formatter = :plain )
-                xlabel!("Iterations")
-                ylabel!("Lagrangian value")
-                # display(plt)
+                println("Optimal x found (rule 2):")
+                display(solver_rule2.best_x)
+                print("\n")
 
-                ticks = range( minimum(solvers[i].gaps), maximum(solvers[i].gaps), length = 5 )
-                ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+                println("Optimal λ found (rule 2):")
+                display(solver_rule2.best_λ)
+                print("\n")
 
-                plt2 = plot(solvers[i].num_iterations, 
-                            solvers[i].gaps, 
-                            title = "Gaps update=$(solvers[i].update_formula)", 
-                            titlefontsize = 12,
-                            label = "Gap", 
-                            lw = 2,
-                            dpi = 360,
-                            xscale = :log10,
-                            # yscale = :log10,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            minorticks = 5,
-                            yticks = ( ticks, ticks_string ),
-                            tickfontsize = 6,
-                            guidefontsize = 9,
-                            formatter = :plain )
-                xlabel!("Iterations")
-                ylabel!("Gap ϕ(λ)-f(x*)")
-                # display(plt2)
+                println("Best value of lagrangian at iteration $(solver_rule2.best_iteration) (rule 2):")
+                display(solver_rule2.best_lagrangian)
+                print("\n")
 
-                plt3 = plot(solvers[i].num_iterations, 
-                            replace!(val -> val <= 0 ? 1e-8 : val, solvers[i].λ_distances), 
-                            title = "Residual λ update=$(solvers[i].update_formula)", 
-                            titlefontsize = 12,
-                            label = "Residual λ", 
-                            lw = 2, 
-                            dpi = 360,
-                            xscale = :log10,
-                            yscale = :log10,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            minorticks = 5,
-                            tickfontsize = 6,
-                            guidefontsize = 9,
-                            formatter = :plain )
-                xlabel!("Iterations")
-                ylabel!("Residual λ")
-                # display(plt3)
+                println("Duality gap between f( x* ) and ϕ( λ ) (rule 2):")
 
-                plt4 = plot(solvers[i].num_iterations, 
-                            solvers[i].x_distances, 
-                            title = "Residual x update=$(solvers[i].update_formula)", 
-                            titlefontsize = 12,
-                            label = "Residual x", 
-                            lw = 2, 
-                            dpi = 360,
-                            xscale = :log10,
-                            yscale = :log10,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            minorticks = 5,
-                            tickfontsize = 6,
-                            guidefontsize = 9,
-                            formatter = :plain )
-                xlabel!("Iterations")
-                ylabel!("Residual x")
-                # display(plt4)
+                dual_gap = jump_sol.opt_val - solver_rule2.best_lagrangian
 
-                savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)__defl=$(solvers[i].deflection)_gap=$(round(gaps["Rule $i"], digits=2)).png")
-                savefig(plt2, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-                savefig(plt3, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-                savefig(plt4, "plots/Residual_x_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-                
-                # total_plot = plot(plt, plt2, plt3, plt4, 
-                #                 layout = @layout([a b; c d]), 
-                #                 title = "Update $(solvers[i].update_formula)",
-                #                 dpi = 360)
-                
-                # savefig(total_plot, "plots/Subplot=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
-                
+                display(dual_gap)
+                print("\n")
+
+                gaps["Rule 2"] = dual_gap
+                L_values["Rule 2"] = solver_rule2.best_lagrangian
+
+                #------------------------------------------------------#
+                #-----------     Results for rule 3     ---------------#
+                #------------------------------------------------------#
+
+                print("\n\n\n\n")
+                print("------------------- Rule 3 results -------------------\n\n")
+
+
+                println("Optimal x found (rule 3):")
+                display(solver_rule3.best_x)
+                print("\n")
+
+                println("Optimal λ found (rule 3):")
+                display(solver_rule3.best_λ)
+                print("\n")
+
+                println("Best value of lagrangian at iteration $(solver_rule3.best_iteration) (rule 3):")
+                display(solver_rule3.best_lagrangian)
+                print("\n")
+
+                println("Duality gap between f( x* ) and ϕ( λ ) (rule 3):")
+
+                dual_gap = jump_sol.opt_val - solver_rule3.best_lagrangian
+
+                display(dual_gap)
+                print("\n")
+
+                gaps["Rule 3"] = dual_gap
+                L_values["Rule 3"] = solver_rule3.best_lagrangian
+
+                print("\n\n")
+
+                println("Gaps:")
+                display(gaps)
+                print("\n")
+                println("Lagrangian values:")
+                display(L_values)
+
+                #------------------------------------------------------#
+                #-----------     Plotting utilities     ---------------#
+                #------------------------------------------------------#
+
+                Plots.theme(:ggplot2)
+
+                gr()
+
+                solvers = [ solver_rule1, solver_rule2, solver_rule3 ]
+
+                for i=1:1:3
+
+                    ticks = range( minimum(solvers[i].relaxation_values), maximum(solvers[i].relaxation_values), length = 5 )
+                    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+
+                    plt = plot( solvers[i].num_iterations, 
+                                solvers[i].relaxation_values, 
+                                title = "Lagrangian value update=$(solvers[i].update_formula)", 
+                                titlefontsize = 12,
+                                label = "Lagrangian", 
+                                lw = 2,
+                                dpi = 360,
+                                linealpha = 0.5,
+                                linecolor = :green,
+                                xscale = :log10,
+                                minorticks = 5,
+                                legend = :bottomright,
+                                yticks = ( ticks, ticks_string ),
+                                tickfontsize = 6,
+                                guidefontsize = 9,
+                                formatter = :plain )
+                    xlabel!("Iterations")
+                    ylabel!("Lagrangian value")
+                    # display(plt)
+
+                    ticks = range( minimum(solvers[i].gaps), maximum(solvers[i].gaps), length = 5 )
+                    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+
+                    plt2 = plot(solvers[i].num_iterations, 
+                                solvers[i].gaps, 
+                                title = "Gaps update=$(solvers[i].update_formula)", 
+                                titlefontsize = 12,
+                                label = "Gap", 
+                                lw = 2,
+                                dpi = 360,
+                                xscale = :log10,
+                                # yscale = :log10,
+                                linealpha = 0.5,
+                                linecolor = :green,
+                                minorticks = 5,
+                                yticks = ( ticks, ticks_string ),
+                                tickfontsize = 6,
+                                guidefontsize = 9,
+                                formatter = :plain )
+                    xlabel!("Iterations")
+                    ylabel!("Gap ϕ(λ)-f(x*)")
+                    # display(plt2)
+
+                    plt3 = plot(solvers[i].num_iterations, 
+                                replace!(val -> val <= 0 ? 1e-8 : val, solvers[i].λ_distances), 
+                                title = "Residual λ update=$(solvers[i].update_formula)", 
+                                titlefontsize = 12,
+                                label = "Residual λ", 
+                                lw = 2, 
+                                dpi = 360,
+                                xscale = :log10,
+                                yscale = :log10,
+                                linealpha = 0.5,
+                                linecolor = :green,
+                                minorticks = 5,
+                                tickfontsize = 6,
+                                guidefontsize = 9,
+                                formatter = :plain )
+                    xlabel!("Iterations")
+                    ylabel!("Residual λ")
+                    # display(plt3)
+
+                    plt4 = plot(solvers[i].num_iterations, 
+                                solvers[i].x_distances, 
+                                title = "Residual x update=$(solvers[i].update_formula)", 
+                                titlefontsize = 12,
+                                label = "Residual x", 
+                                lw = 2, 
+                                dpi = 360,
+                                xscale = :log10,
+                                yscale = :log10,
+                                linealpha = 0.5,
+                                linecolor = :green,
+                                minorticks = 5,
+                                tickfontsize = 6,
+                                guidefontsize = 9,
+                                formatter = :plain )
+                    xlabel!("Iterations")
+                    ylabel!("Residual x")
+                    # display(plt4)
+
+                    savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)__defl=$(solvers[i].deflection)_gap=$(round(gaps["Rule $i"], digits=2)).png")
+                    savefig(plt2, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
+                    savefig(plt3, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
+                    savefig(plt4, "plots/Residual_x_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
+                    
+                    # total_plot = plot(plt, plt2, plt3, plt4, 
+                    #                 layout = @layout([a b; c d]), 
+                    #                 title = "Update $(solvers[i].update_formula)",
+                    #                 dpi = 360)
+                    
+                    # savefig(total_plot, "plots/Subplot=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+                    
+
+                end
 
             end
 
         end
 
     end
-
-end
    
+end
+
+
+#------------------------------------------------------#
+#---------     Initialize all parameters    -----------#
+#------------------------------------------------------#
+
+print("Input n values separated by comma: ")
+n_list_str = readline()
+n_list_str = split(n_list_str, ",")
+
+n_list = []
+for item in n_list_str
+    push!(n_list, parse(Int64, item))
+end
+
+K_list = []
+for n in n_list
+    print("Enter K values separated by comma for n=$(n): ")
+    Ks_str = readline()
+    Ks = split(Ks_str, ",")
+    K_s = []
+    for item in Ks
+        push!(K_s, parse(Int64, item))
+    end
+    push!(K_list, K_s)
+end 
+
+display(n_list)
+display(K_list)
+
+print("Enter true/false for deflection: ")
+deflections = readline()
+deflections = deflections == "true" ? [true, false] : [false]
+
+# n_list = [10, 25, 50, 100, 250]
+# K_list = [[3, 5, 7], [7, 13, 19], [12, 25, 37], [25, 50, 75], [63, 125, 188]]
+# n_list = [50, 100, 250]
+# K_list = [[20, 40], [33, 66], [83, 166]]
+# deflections = [true, false]
+# n_list = [2, 2]
+# K_list = [[1, 2], [1, 2]]
+
+testing(n_list, K_list, deflections)

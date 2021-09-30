@@ -1,16 +1,16 @@
 # Fdb version 3
-["bibtex report"] 1632773731 "report.aux" "report.bbl" "report" 1632773732
+["bibtex report"] 1632988019 "report.aux" "report.bbl" "report" 1632989496
   "/usr/share/texlive/texmf-dist/bibtex/bst/base/unsrt.bst" 1292289607 18030 1376b4b231b50c66211e47e42eda2875 ""
   "bibliography.bib" 1632752108 7633 43d57ad7703a4e9acfb1d32866e63e3c ""
-  "report.aux" 1632773732 6813 39578e2ee125313b939afa1f49c41e0c "pdflatex"
+  "report.aux" 1632989495 6921 2e3edd0f153d78cb7bb49c7bb506a713 "pdflatex"
   (generated)
   "report.bbl"
   "report.blg"
-["pdflatex"] 1632773731 "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.tex" "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.pdf" "report" 1632773732
+["pdflatex"] 1632989495 "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.tex" "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.pdf" "report" 1632989496
   "/etc/texmf/web2c/texmf.cnf" 1628348412 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/home/matteo/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/tcti1000.600pk" 1628354041 14040 ffed8bf0b069bbca228138b749688262 ""
-  "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.aux" 1632773732 6813 39578e2ee125313b939afa1f49c41e0c ""
-  "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.tex" 1632773729 46358 fe66c8c4efe38d96130259a68cc8bddd ""
+  "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.aux" 1632989495 6921 2e3edd0f153d78cb7bb49c7bb506a713 ""
+  "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.tex" 1632989493 48509 bc67924363e5bd07dfc573ed287596a3 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/tcti1000.tfm" 1136768653 2048 3777f70f4372b17e2d3fda2b5684af05 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy5.tfm" 1246382020 1120 1e8878807317373affa7f7bba4cf2f6a ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy7.tfm" 1246382020 1120 7f9f170e8aa57527ad6c49feafd45d54 ""
@@ -230,14 +230,14 @@
   "/usr/share/texmf/web2c/texmf.cnf" 1581979058 38841 ce3692aa899bb693b90b87eaa5d4d84e ""
   "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1628353998 116815 042f274caa7e6ea7d614393f8f13cc15 ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1628354003 4879716 5ede77bad0f944b977bca4a511263e98 ""
-  "report.aux" 1632773732 6813 39578e2ee125313b939afa1f49c41e0c "pdflatex"
-  "report.bbl" 1632773731 1915 e47c56a4fb5eec8b7610afb100555db3 "bibtex report"
-  "report.tex" 1632773729 46358 fe66c8c4efe38d96130259a68cc8bddd ""
-  "report.toc" 1632773732 1309 61cc6cdf8f549974f9b236e3323c8b79 "pdflatex"
+  "report.aux" 1632989495 6921 2e3edd0f153d78cb7bb49c7bb506a713 "pdflatex"
+  "report.bbl" 1632988019 1915 e47c56a4fb5eec8b7610afb100555db3 "bibtex report"
+  "report.tex" 1632989493 48509 bc67924363e5bd07dfc573ed287596a3 ""
+  "report.toc" 1632989495 1309 61cc6cdf8f549974f9b236e3323c8b79 "pdflatex"
   (generated)
-  "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.log"
+  "report.log"
   "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.pdf"
+  "/home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.log"
   "report.aux"
   "report.toc"
-  "report.log"
   "report.pdf"

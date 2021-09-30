@@ -7,7 +7,7 @@ using Random
 using Plots
 using .Utils
 using .ADAGRAD_Solver
-# Compute the solution of Convex.jl
+# Compute the solution of JuMP.jl
 using .JuMPSolution
 
 
@@ -162,8 +162,8 @@ function testing(n_list, K_list, deflections)
                 # Initialize max_iter
                 max_iter = 100000
 
-                # Initialize ϵ
-                ϵ = 1e-6
+                # Initialize ε
+                ε = 1e-6
 
                 # Initialize τ
                 τ = 1e-1
@@ -247,7 +247,7 @@ function testing(n_list, K_list, deflections)
                     Array{Float64}(undef, n, 1), # avg_gradient
                     Array{Float64}(undef, n, 1), # d_i
                     deflection, # deflection
-                    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+                    Q, q, η, δ, max_iter, ε, τ, -Inf, # best_lagrangian
                     0, # best_iteration
                     x, # best_x
                     λ, # best_λ
@@ -273,7 +273,7 @@ function testing(n_list, K_list, deflections)
                     Array{Float64}(undef, n, 1), # avg_gradient
                     Array{Float64}(undef, n, 1), # d_i
                     deflection, # deflection
-                    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+                    Q, q, η, δ, max_iter, ε, τ, -Inf, # best_lagrangian
                     0, # best_iteration
                     x, # best_x
                     λ, # best_λ
@@ -299,7 +299,7 @@ function testing(n_list, K_list, deflections)
                     Array{Float64}(undef, n, 1), # avg_gradient
                     Array{Float64}(undef, n, 1), # d_i
                     deflection, # deflection
-                    Q, q, η, δ, max_iter, ϵ, τ, -Inf, # best_lagrangian
+                    Q, q, η, δ, max_iter, ε, τ, -Inf, # best_lagrangian
                     0, # best_iteration
                     x, # best_x
                     λ, # best_λ

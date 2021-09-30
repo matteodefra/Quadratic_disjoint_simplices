@@ -338,18 +338,18 @@ among three different update rules, in order \eqref{eqn:projection}, \eqref{eqn:
 \begin{equation}
   \begin{gathered}
     \lambda_{t+1} = P_{\mathcal{X}} \{ \lambda_t + \eta\, diag(G_t)^{-1/2} g_t \} \\
-    \lambda_{t+1} = \argmin_{\lambda \in \mathcal{X}} \{ \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{1}{t} \Psi_t(\lambda) \} \\
-    \lambda_{t+1} = \argmin_{\lambda \in \mathcal{X}} \{ \eta \left\langle g_t,\lambda \right\rangle + B_{\Psi_t} (\lambda,\lambda_t) \}
+    \lambda_{t+1} = \argmax_{\lambda \in \mathcal{X}} \{ \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{1}{t} \Psi_t(\lambda) \} \\
+    \lambda_{t+1} = \argmax_{\lambda \in \mathcal{X}} \{ \eta \left\langle g_t,\lambda \right\rangle + B_{\Psi_t} (\lambda,\lambda_t) \}
     \label{eqn:updates}  
   \end{gathered}
 \end{equation}
-We need to find a minimum for the considered update function and then project it onto the constraint set $\mathcal{X}$.\\
+We need to find a maximum for the considered update function and then project it onto the constraint set $\mathcal{X}$.\\
 About the terms $\Psi$ and $B_\Psi$, these will be replaced, according to what we have said before,respectively by:
 \begin{gather*}
   \Psi_t(\lambda) = \frac{1}{2} \left\langle \lambda,H_t \lambda \right\rangle \\
   B_{\Psi_t} (\lambda,\lambda_t) = \Psi_t(\lambda) - \Psi_t(\lambda_t) - \left\langle \nabla \Psi_t(\lambda_t),\lambda-\lambda_t \right\rangle
 \end{gather*}
-Regarding the minimum, this can be simply solved by differentiating the function with respect to the variable to be minimized, and setting it equal to $0$. The detailed derivation of each update can be found in the appendix \ref{sec:appendix}.
+Regarding the maximum, this can be simply solved by differentiating the function with respect to the variable to be maximized, and setting it equal to $0$. The detailed derivation of each update can be found in the appendix \ref{sec:appendix}.
 \begin{subequations}
   \label{eqn:minimized}
   \begin{align}
@@ -362,7 +362,7 @@ Regarding the minimum, this can be simply solved by differentiating the function
   \end{align}
 \end{subequations}
 For the stepsize $\eta$, this can be fixed apriori, by using the classical DSS or Polyak stepsize.\\
- For the dual variables, after we obtain the $\hat{\lambda}_{t+1}$, we use the projection over the nonnegative orthant to get $\lambda_{t+1}$, formally
+For the dual variables, after we obtain the $\hat{\lambda}_{t+1}$, we use the projection over the nonnegative orthant to get $\lambda_{t+1}$, formally
 \[
   \lambda_{t+1} = P_\mathcal{X}(\hat{\lambda}_{t+1}) = \max{ \{ 0,\hat{\lambda}_{t+1} \} }
 \]
@@ -464,12 +464,9 @@ a linear system that can be solved directly and efficiently by computing the piv
 which can be solved efficiently through forward substitution (for the matrix $L$) and back substitution (for the matrix $U$) with a complexity of $O((n+K)^2)$.\\
 In the most general case the pivoted LU factorization is preferred, but we will see in the next chapter that the implementation language automatically identify the best 
 factorization to use (for example if the full matrix is positive definite, \textit{Cholesky} is better, as well as if the matrix is symmetric, the \textit{LDL} or \textit{Bunch-Kaufman} factorization are better).\\ 
-Lastly, regarding the stopping condition for the algorithm termination, we can check primal and dual variables. Follows that, given a certain value of tolerance $\epsilon$, we have %respectively for the primal and dual variables
+Lastly, regarding the stopping condition for the algorithm termination, we can check primal and dual variables. Follows that, given a certain value of tolerance $\varepsilon$, we have %respectively for the primal and dual variables
 \begin{equation}
-  \begin{gathered}
-    \|x_{t} - x_{t-1}\|_2 \le \epsilon \\
-    \|\lambda_{t} - \lambda_{t-1}\|_2 \le \epsilon
-  \end{gathered}
+    \|\lambda_{t} - \lambda_{t-1}\|_2 \le \varepsilon
   \label{eqn:stopping-condition}
 \end{equation}
 In addition to this, what we can check too is the duality gap between the original function and the dual function (provided that we know the optimal value), so
@@ -477,7 +474,12 @@ In addition to this, what we can check too is the duality gap between the origin
   f(x) - \psi(\lambda) \\
   f(x) - f(x^*) \le f(x) - \psi(\lambda)
 \end{gather*}
-From this we understand that having a zero duality gap implies optimality of the solution.\\ 
+From this we understand that having a zero duality gap implies optimality of the solution, and so fixing a certain value of tolerance $\tau$ we have a second stopping condition
+\[
+  f(x^*) - \psi(\lambda_i) \le \tau  
+\] 
+for each $\lambda_i$ computed during iterations.\\
+Lastly, an optional parameter is given as input to the algorithm. The parameter $defl$ is a boolean value indicating the use of deflection or not, whose derivation is described in the Appendix C.\\
 Putting everything together, we obtain a slightly different algorithm than \ref{alg:adagrad}:
 \begin{flushleft}
   \begin{minipage}{\textwidth}
@@ -485,13 +487,17 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
       \caption{\texttt{ADAGRAD} on our dual problem}
       \label{alg:my_alg}
       \begin{algorithmic}
-        \Function{\texttt{ADAGRAD}}{$\eta$, $\delta$, $\epsilon$, $max\_iter$}
+        \Function{\texttt{ADAGRAD}}{$\eta$, $\delta$, $\varepsilon$, $max\_iter$, $defl$}
           \State $\lambda_0 \gets 0$
           \State $g_{1:0} \gets \left[\,\right]$
           \State $x_0 \gets 0$
           \For{$t \gets 1$ to $T$}
             \State $Loss \gets f(x_{t-1})$
             \State $g_t \gets \dfrac{\partial \psi_\lambda(\lambda)}{\partial \lambda}$\Comment{Compute subgradient}
+            \If{$defl$}\Comment{Compute deflection}
+                \State Compute $\gamma$ using \ref{sec:appendix_C}
+                \State Update $g_t$
+              \EndIf
             \State $g_{1:t} \gets \left[ g_{1:t-1}\ g_t \right]$\Comment{Store subgradient}
             \State $s_{t,i} \gets \| g_{1:t,i} \|_2$\Comment{Solution of the problem \ref{sec:convergence}}
             \State $H_t = \gets \delta \mathit{I} + diag(s_t)$
@@ -539,8 +545,8 @@ In order to test the program on different problem dimensions, we have chosen dif
   \end{tabular}  
 \end{center}
 
-The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled and the needed memory is computed, 
-then the next executions are much much faster. Then we suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=\left[1,2\right]$) and ignore the results, and then start the experiments with 
+The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled, modules are loaded and the needed memory is computed, 
+then the next executions are much much faster. We suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=\left[1,2\right]$) and ignore the results, and then start the experiments with 
 the values of the previous table.\\
 The creation of the matrix $Q$ and the starting value of the iterates $x$ and $\lambda$ are a key point for the algorithm. The matrix $Q$ is created using a support matrix $A\_help$ and a vector $vect$. $Q$ is 
 constructed using the eigenvalue decomposition $A\_help * vect * A\_help^{-1}$, by choosing an appropriate non singular matrix $A\_help$ and a vector of eigenvalues $vect$ which is filled with positive numbers,
@@ -610,9 +616,9 @@ Now we can differentiate everything w.r.t. to $x$, obtaining the closed form
 \subsection{Derivation of primal-dual update}
 After describing the derivation of the proximal term, we can now look into the detailed derivation of the update \eqref{eqn:primal-dual-update}. Starting from the equation
 \[
-  \lambda_{t+1} = \argmin_{\lambda \in \mathcal{X}} \{ \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{1}{t} \Psi_t(\lambda) \} 
+  \lambda_{t+1} = \argmax_{\lambda \in \mathcal{X}} \{ \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{1}{t} \Psi_t(\lambda) \} 
 \]
-we want to achieve the $\argmin$ over the set $\mathcal{X}$. Focusing on the minimum problem, we want to get the minimum $\lambda$, hence:
+we want to achieve the $\argmax$ over the set $\mathcal{X}$. Focusing on the maximum problem, we want to get the maximum $\lambda$, hence:
 \begin{align*}
   \frac{\partial}{\partial \lambda} \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{\partial}{\partial \lambda} \frac{1}{t} \Psi_t(\lambda) = 0 \\
   \eta\ \overline{g}_t + \frac{1}{2t} \frac{\partial}{\partial \lambda} \left\langle \lambda,H_t \lambda \right\rangle = 0 
@@ -628,7 +634,7 @@ Knowing that $H_t$ is a diagonal matrix, the summation terms obtained in the der
   \end{bmatrix}
   = 2\, H_t\, \lambda
 \end{align*}
-Substituting this into the above derivation, we get the minimum $\lambda$:
+Substituting this into the above derivation, we get the maximum $\lambda$:
 \begin{align*}
   \eta\ \overline{g}_t + \frac{1}{t} H_t\, \lambda = 0 \\
   \lambda = - H_t^{-1}\, t\, \eta\, \overline{g}_t
@@ -637,13 +643,13 @@ Substituting this into the above derivation, we get the minimum $\lambda$:
 \subsection{Derivation of composite-mirror update}
 We follow the same approach also for the update \eqref{eqn:composite-mirror-update}. Starting from the definition
 \[
-  \lambda_{t+1} = \argmin_{\lambda \in \mathcal{X}} \{ \eta \left\langle g_t,\lambda \right\rangle + B_{\Psi_t} (\lambda,\lambda_t) \}
+  \lambda_{t+1} = \argmax_{\lambda \in \mathcal{X}} \{ \eta \left\langle g_t,\lambda \right\rangle + B_{\Psi_t} (\lambda,\lambda_t) \}
 \]
 where we remark the definition of Bregman divergence
 \[
   B_{\Psi_t} (\lambda,\lambda_t) = \Psi_t(\lambda) - \Psi_t(\lambda_t) - \left\langle \nabla \Psi_t(\lambda_t),\lambda-\lambda_t \right\rangle  
 \]
-Also in this case, to find the $\argmin$ we derive the update formula and set it to be zero
+Also in this case, to find the $\argmax$ we derive the update formula and set it to be zero
 \begin{align*}
   \frac{\partial}{\partial \lambda} \eta \left\langle g_t,\lambda \right\rangle + \frac{\partial}{\partial \lambda} B_{\Psi_t} (\lambda,\lambda_t) = 0 \\ 
   \eta\, g_t + \frac{\partial}{\partial \lambda} \left[ \Psi_t(\lambda) - \Psi_t(\lambda_t) - \left\langle \nabla \Psi_t(\lambda_t),\lambda-\lambda_t \right\rangle \right] = 0 \\
@@ -690,28 +696,56 @@ Utterly following the definition, we state that $s$ is a subgradient of $\psi$ a
 \[
   \psi(y) \le \psi(x) + s(y-x) \quad \forall y \in \mathbb{R}^n  
 \]
-having then 
+which reordering the term can be written as
 \[
-  \partial \psi(\lambda_{t-1}) = \{ s \in \mathbb{R}^n : s \text{ is a subgradient at } \lambda_{t-1} \}
+  \langle s, y-x \rangle \ge \psi(y) - \psi(x) \quad \forall y \in \mathbb{R}^n  
 \]
+Now, since we want to compute the subgradient at the point $x = \lambda_{t-1}$ (we will omit $\forall y \in \mathbb{R}^n$ in the next steps)
+\[
+  \langle s, y - \lambda_{t-1} \rangle \ge \psi(y) - \psi(\lambda_{t-1})   
+\]
+Substituting $y = \lambda$, calling $v_1 = \psi(\lambda_{t-1})$, and using the function at our disposal, we have to solve the following inequality
+\[
+  \langle s, \lambda - \lambda_{t-1} \rangle \ge x^T Q x + q x - \lambda x - v_1
+\]
+Since we are computing the subgradient step by step on the function $\psi$, also the quantity $x$ is a known quantity. As a consequence, we can call 
+the quantity $x^T Q x + q x = v_2$, obtaining 
+\[
+  \langle s, \lambda - \lambda_{t-1} \rangle \ge v_2 - \lambda x - v_1
+\]
+Either we can solve the above inequality, or better we can apply the following reasoning. The subdifferential is the set containing all the numbers in the 
+interval $\left[a,b\right]$ such that
+\begin{align*}
+  a = \lim_{\lambda \rightarrow \lambda_0^-} \dfrac{\psi(\lambda) - \psi(\lambda_{t-1})}{\lambda - \lambda_{t-1}} \\
+  b = \lim_{\lambda \rightarrow \lambda_0^+} \dfrac{\psi(\lambda) - \psi(\lambda_{t-1})}{\lambda - \lambda_{t-1}}
+\end{align*}
+% having then 
+% \[
+%   \partial \psi(\lambda_{t-1}) = \{ s \in \mathbb{R}^n : s \text{ is a subgradient at } \lambda_{t-1} \}
+% \]
 
-In order to have our ascent direction of our dual function, we need to compute the subgradient of the $\psi$ function at the previous point $\lambda_{t-1}$
-\begin{align*}
-  \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}}
-\end{align*}
-Being everything constant except for the relaxed constraint, we have the subgradient with respect to the set of inequality constraints $h$ 
-\begin{align*}
-  \dfrac{\partial h(\lambda_{t-1})}{\partial \lambda_{t-1}} = \dfrac{\partial}{\partial \lambda_{t-1}} - \left\langle \lambda_{t-1},x \right\rangle
-\end{align*}
-Assuming we are at step $t$ of our iterations, then we will use the primal variable $x_{t-1}$ obtained in the previous step. As a consequence, the gradient is simply given by
-\[
-  \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}} = - x_{t-1}
-\]
+% In order to have our ascent direction of our dual function, we need to compute the subgradient of the $\psi$ function at the previous point $\lambda_{t-1}$
+% \begin{align*}
+%   \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}}
+% \end{align*}
+% Being everything constant except for the relaxed constraint, we have the subgradient with respect to the set of inequality constraints $h$ 
+% \begin{align*}
+%   \dfrac{\partial h(\lambda_{t-1})}{\partial \lambda_{t-1}} = \dfrac{\partial}{\partial \lambda_{t-1}} - \left\langle \lambda_{t-1},x \right\rangle
+% \end{align*}
+% Assuming we are at step $t$ of our iterations, then we will use the primal variable $x_{t-1}$ obtained in the previous step. As a consequence, the gradient is simply given by
+% \[
+%   \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}} = - x_{t-1}
+% \]
 
 
 \section{Appendix C: \texorpdfstring{$\gamma$}{TEXT} computation}
-
-In order to deflect our subgradient/gradient, we could solve the problem 
+\label{sec:appendix_C}
+Deflection is way to change the direction of the computed subgradient by using a convex combination
+\[
+  d^i = \gamma^i g^i + (1 - \gamma^i) d^{i-1}   
+\]
+where $g^i$ is the subgradient at iteration $i$ and $d^{i-1}$ is the direction computed at the previous step.\\
+To find the best $\gamma^i$ our subgradient/gradient, we could solve the problem 
 \[
   \gamma^i \in \argmin{ \{ \| \gamma g^i + (1 - \gamma) d^{i-1} \|^2 : \gamma \in \left[0,1\right] \} }   
 \]

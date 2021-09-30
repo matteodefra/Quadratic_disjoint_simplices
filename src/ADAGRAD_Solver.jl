@@ -2,14 +2,51 @@ module ADAGRAD_Solver
 
 using Random
 using LinearAlgebra
-using ForwardDiff
 using Printf
 using DataFrames
 using CSV
 
 export Solver
 
-# Create struct solver to approach the problem
+#= 
+Create struct solver to approach the problem:
+    n::Int                                      Identify the problem dimension
+    iteration::Int                              Keep track of the current iteration
+    λ::Array{Float64}                           Store the current value of the lagrangian multipliers      
+    K::Int                                      Identify the number of simplices
+    I_K::Vector{Array{Int64}}                   Store the indexes of the corresponding simplices
+    x::Array{Float64}                           Store the current value of the lagrangian primal iterates
+    grads::Array{Float64}                       Keep track of the subgradient at each iteration 
+    G_t::Diagonal{Float64, Vector{Float64}}     Cumulative sum of the outer product of the gradients, keep in Diagonal way to save memory
+    s_t::Array{Float64}                         Keep track of the solution of the problem 2.4 (see report)
+    avg_gradient::Array{Float64}                Keep track of the average of the subgradients
+    d_i::Array{Float64}                         Keep track of the current deflected direction
+    deflection::Bool                            Whether to use deflection or not 
+    Q::Matrix{Float64}                          Q matrix of the function problem
+    q::Array{Float64}                           q vector of the function problem
+    η::Float64                                  Stepsize modified at each iteration
+    δ::Float64                                  Random quantity used to compute H_t matrix
+    max_iter::Int                               Maximum number of iterations allowed
+    ε::Float64                                  Tolerance on the norm of the λ iterates
+    τ::Float64                                  Tolerance on the dual gap 
+    best_lagrangian::Float64                    Keep track of the best lagrangian value found
+    best_iteration::Int64                       Keep track of the best iteration
+    best_x::Array{Float64}                      Keep track of the best value of x found
+    best_λ::Array{Float64}                      Keep track of the best value of λ found 
+    num_iterations::Vector{Float64}             Store each iteration
+    relaxation_values::Vector{Float64}          Store each lagrangian evaluation 
+    x_values::Array{Float64}                    Store every value of x
+    λ_values::Array{Float64}                    Store every value of λ
+    λ_distances::Array{Float64}                 Store each distance between the current λ and the previous one 
+    x_distances::Array{Float64}                 Store each distance between the current x and the previous one  
+    timings::Vector{Float64}                    Store timing execution for each iteration
+    gaps::Vector{Float64}                       Store dual gap found at each iteration
+    update_formula::Int                         Update rule to be used  
+    Full_mat::Matrix{Float64}                   Save the full matrix to solve the lagrangian relaxation
+    F::Any                                      Save the factorization of Full_mat
+    A::Array{Int64}                             Save the constraint matrix A 
+    Off_the_shelf_primal::Float64               f(x*) computed with an off-the-shelf solver    
+=#
 mutable struct Solver
     n :: Int
     iteration :: Int
@@ -28,7 +65,7 @@ mutable struct Solver
     η :: Float64
     δ :: Float64
     max_iter :: Int
-    ϵ :: Float64
+    ε :: Float64
     τ :: Float64
     best_lagrangian :: Float64
     best_iteration :: Int64
@@ -61,6 +98,7 @@ function lagrangian_relaxation(solver, previous_x, previous_λ)
     return (previous_x' * solver.Q * previous_x) .+ (solver.q' * previous_x) .- (previous_λ' * previous_x)
 end
 
+
 #= 
 
     Compute one among the three possible update_rule specified in the report.
@@ -77,7 +115,7 @@ end
 
     The third one employ the following:
 
-        λ_t = λ_{t-1} + η H_{t-1}^{-1} g_t
+        λ_t = λ_{t-1} - η H_{t-1}^{-1} g_t
 
 =#
 # PROVARE CON -
@@ -126,7 +164,7 @@ function compute_update_rule(solver, H_t)
 
         if solver.deflection
     
-            update_part = solver.η * H_t^(-1) * solver.d_i#grads[:,end]
+            update_part = solver.η * H_t^(-1) * solver.d_i
     
         else
 
@@ -147,7 +185,7 @@ end
 
 #=
     Check the other stopping condition, i.e. when
-        ∥ λ_t - λ_{t-1} ∥_2 ≤ ϵ 
+        ∥ λ_t - λ_{t-1} ∥_2 ≤ ε 
     whenever this condition is met we have reached an optimal value of multipliers λ,
     hence we met complementary slackness and we can stop
 =#
@@ -159,7 +197,7 @@ function check_λ_norm(solver, current_λ, previous_λ)
 
     push!(solver.λ_distances, distance)
 
-    if distance <= solver.ϵ
+    if distance <= solver.ε
         # We should exit the loop
         # Log result of the last iteration
         @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%s \t\t%1.5e \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
@@ -174,20 +212,54 @@ function check_λ_norm(solver, current_λ, previous_λ)
 
 end
 
-#= 
-    Compute the gradient of the lagrangian relaxation of the problem. Given the value of x_{t-1}, the 
-    subgradient (which coincide with the gradient in this case) is the slope of the hyperplane defined 
-    by the known vector x_{t-1} and the variables λ_{t-1}
+
+#=
+    Compute the subgradient of ϕ() at the point λ_{t-1}. The subgradient is taken by computing the left limit 
+    and the right limit and then choosing the maximum norm of them 
+
+        s = argmax { ∥ s ∥ : s ∈ ∂ϕ(λ_{t-1}) }
+
+    where the set of subgradient is the interval [a, b] where 
+
+        a = lim λ -> λ_{t-1}^-  ( ϕ(λ) - ϕ(λ_{t-1}) ) / (λ - λ_{t-1})
+
+        b = lim λ -> λ_{t-1}^+  ( ϕ(λ) - ϕ(λ_{t-1}) ) / (λ - λ_{t-1})
 =#
-function get_grad(solver)
+function get_subgrad(solver)
 
-    L(var) = solver.x' * solver.Q * solver.x .+ solver.q' * solver.x .- var' * solver.x
+    # First create the values λ_{t-1}^- and λ_{t-1}^+ with an ϵ > 0
+    ϵ = 1e-2
 
-    gradient(val) = ForwardDiff.jacobian(var -> L(var), val)
+    λ_minus = solver.λ .- ϵ
+    λ_plus = solver.λ .+ ϵ
 
-    subgradient = gradient(solver.λ)'
+    # Compute the value of a
+    a = lagrangian_relaxation(solver, solver.x, λ_minus) - lagrangian_relaxation(solver, solver.x, solver.λ)
+    a = a ./ (λ_minus - solver.λ)
 
-    return subgradient
+    # Compute value of b
+    b = lagrangian_relaxation(solver, solver.x, λ_plus) - lagrangian_relaxation(solver, solver.x, solver.λ)
+    b = b ./ (λ_plus - solver.λ)
+
+    # If norm(a-b) ≈ 0, then the gradient exist
+    difference = norm(a-b)
+
+    if difference <= 1e-12
+        # The gradient exists and coincide with the normal derivation of ϕ(λ_{t-1})
+        return - solver.x
+    end
+
+    # Otherwise compute the maximum norm between a and b
+    a_norm = norm(a)
+    b_norm = norm(b)
+
+    max_norm = max(a_norm, b_norm)
+
+    if max_norm == a_norm
+        return a
+    else 
+        return b
+    end
 
 end
 
@@ -210,6 +282,11 @@ function x_norm(previous_x, current_x)
 end
 
 
+#=
+    Compute the optimal γ resulting from the solution of the problem
+    
+        γ = argmin { ∥ γ g^i + (1 - γ) d^{i-1} ∥^2 }
+=#
 function compute_gamma(solver, subgrad, previous_d)
 
     if solver.iteration == 1
@@ -225,17 +302,17 @@ function compute_gamma(solver, subgrad, previous_d)
 
 end
 
+
 #=
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
-    Takes as parameters:
-        @param solver: struct solver containing all the required data structures
 =#  
 function my_ADAGRAD(solver)
 
     # Log result of each iteration
     print("Iteration\tTime\t\tL value\t\tx_norm\t\tλ_norm\t\tcurrent gap\n\n")
 
+    # Prepare a dataframe to store the values
     df = DataFrame( Iteration = Int[],
                     Time = Float64[],
                     LagrangianValue = Float64[],
@@ -243,6 +320,7 @@ function my_ADAGRAD(solver)
                     λ_norm_residual = Any[],
                     Dual_gap = Any[] )
 
+    # Set the first optimal values
     solver.iteration = 0
 
     L_val = lagrangian_relaxation(solver, solver.x, solver.λ)[1]
@@ -291,7 +369,7 @@ function my_ADAGRAD(solver)
             
         which is always differentiable since it is an hyperplane
         =#
-        subgrad = get_grad(solver)
+        subgrad = get_subgrad(solver)
 
         if solver.deflection
 
@@ -306,11 +384,12 @@ function my_ADAGRAD(solver)
         end
 
         # Store subgradient in matrix
-        solver.grads = [solver.grads subgrad]
+        # solver.grads = [solver.grads subgrad]
+        solver.deflection ? solver.grads = [solver.grads solver.d_i] : solver.grads = [solver.grads subgrad]
         
         # Solution of lagrangian_relaxation of problem 2.4 (see report)
         # Accumulate the squared summation into solver.s_t structure
-        solver.s_t .+= (subgrad.^2)
+        solver.deflection ? solver.s_t .+= (solver.d_i.^2) : solver.s_t .+= (subgrad.^2)
 
         # Create a copy of solver.s_t (avoid modifying the original one)
         s_t = solver.s_t 
@@ -416,9 +495,11 @@ function my_ADAGRAD(solver)
 
     end
 
+    # Log total time and iterations
     print("\n")
     print("Iterations: $(solver.iteration)\tTotal time: $(round(sum(solver.timings), digits=6))\n")
 
+    # Save results in CSV file
     CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula)_defl=$(solver.deflection).csv", df)
 
     return solver

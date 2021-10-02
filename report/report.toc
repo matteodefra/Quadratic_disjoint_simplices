@@ -2,14 +2,14 @@
 \contentsline {section}{\numberline {2}Deflected subgradient Analysis}{1}{section.2}%
 \contentsline {subsection}{\numberline {2.1}\texttt {ADAGRAD} introduction}{1}{subsection.2.1}%
 \contentsline {subsection}{\numberline {2.2}Algorithm characteristics}{2}{subsection.2.2}%
-\contentsline {subsection}{\numberline {2.3}Proximal term discussion}{3}{subsection.2.3}%
-\contentsline {subsection}{\numberline {2.4}Convergence Analysis}{4}{subsection.2.4}%
-\contentsline {subsection}{\numberline {2.5}General application to our case}{7}{subsection.2.5}%
-\contentsline {section}{\numberline {3}Implementation}{10}{section.3}%
-\contentsline {section}{References}{12}{section.3}%
-\contentsline {section}{\numberline {A}Appendix A: Updates derivations}{13}{appendix.A}%
-\contentsline {subsection}{\numberline {A.1}Differentiating proximal term}{13}{subsection.A.1}%
-\contentsline {subsection}{\numberline {A.2}Derivation of primal-dual update}{13}{subsection.A.2}%
-\contentsline {subsection}{\numberline {A.3}Derivation of composite-mirror update}{14}{subsection.A.3}%
-\contentsline {section}{\numberline {B}Appendix B: subgradient computation}{15}{appendix.B}%
-\contentsline {section}{\numberline {C}Appendix C: $\gamma $ computation}{16}{appendix.C}%
+\contentsline {subsection}{\numberline {2.3}Proximal term discussion}{2}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Convergence Analysis}{3}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}General application to our case}{6}{subsection.2.5}%
+\contentsline {section}{\numberline {3}Implementation}{8}{section.3}%
+\contentsline {section}{References}{10}{section.3}%
+\contentsline {section}{\numberline {A}Appendix A: Updates derivations}{11}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}Differentiating proximal term}{11}{subsection.A.1}%
+\contentsline {subsection}{\numberline {A.2}Derivation of primal-dual update}{11}{subsection.A.2}%
+\contentsline {subsection}{\numberline {A.3}Derivation of composite-mirror update}{12}{subsection.A.3}%
+\contentsline {section}{\numberline {B}Appendix B: subgradient computation}{13}{appendix.B}%
+\contentsline {section}{\numberline {C}Appendix C: $\gamma $ computation}{13}{appendix.C}%

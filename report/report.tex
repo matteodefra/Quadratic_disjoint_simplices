@@ -10,12 +10,13 @@
 % \usepackage{algorithmic}
 \usepackage{algpseudocode}% http://ctan.org/pkg/algorithmicx
 \usepackage[utf8]{inputenc}
-\usepackage[left=3.5cm, right=3.5cm]{geometry}
+\usepackage[a4paper, margin=2.5cm, left=3.5cm, right=3.5cm]{geometry}
 \usepackage{accents}
 \usepackage{float}
 \usepackage{hyperref}
 \usepackage{bookmark}
 \usepackage{pdfpages}
+\usepackage{subcaption}
 \usepackage{sectsty}
 \usepackage{ragged2e}
 \usepackage{titlesec}
@@ -496,7 +497,7 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
             \State $g_t \gets \dfrac{\partial \psi_\lambda(\lambda)}{\partial \lambda}$\Comment{Compute subgradient}
             \If{$defl$}\Comment{Compute deflection}
                 \State Compute $\gamma$ using \ref{sec:appendix_C}
-                \State Update $g_t$
+                \State Update $g_t = \gamma g_t + (1 - \gamma) g_{t-1}$
               \EndIf
             \State $g_{1:t} \gets \left[ g_{1:t-1}\ g_t \right]$\Comment{Store subgradient}
             \State $s_{t,i} \gets \| g_{1:t,i} \|_2$\Comment{Solution of the problem \ref{sec:convergence}}
@@ -515,48 +516,225 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
 
 
 \section{Implementation}
-The ideas above described have been implemented using Julia. The provided package give us the ability to provide the dimension of the problem $n$ and the number of simplices $K$ by input.\\
+The ideas above described have been implemented using Julia. The provided package give us the ability to provide the dimensions of the problem $n$ and the number of simplices $K$ for each different $n$ by input.\\
 Subsequently, the code is all automated and provide the creation of the matrix $Q \succeq 0$, $A$, the random sets $I^k$, the vector $q$ and all the required parameters. The resulting solutions 
 of the three different update rules are saved and compared with the optimal primal solution $f(x^*)$ found using the off-the-shelf solver \textit{JuMP.jl} \cite{DunningHuchetteLubin2017}.\\
-Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\epsilon$ value to check the $\lambda$ residual.\\
-All the values assumed by $x$, $\lambda$, each $\lambda$-norm and $x$-norm residual, the number of iterations and the value of the Lagrangian function are saved at each iteration and displayed 
-step by step, and in the end stored in a \textit{csv} file and used to display a convergence plot (\textit{iterations} vs \textit{Lagrangian value}), a residual visualization plot of the 
-$\lambda$-norm (\textit{iterations} vs $\lambda$\textit{-norms}) and finally a gap residual plot (\textit{iterations} vs $\phi(\lambda_t) - f(x^*)$). All the duality gaps and the resulting value 
-of the Lagrangian functions are saved too in a dictionary and printed at the end to identify the best duality gap (among the different update rules) and the function value.\\
-During the execution of the algorithm, the initial parameters are showed, as well as the result of \textit{Convex.jl}. Then, the customized \texttt{ADAGRAD} starts with the three different variations, 
-showing at each iteration the time elapsed, the $\mathcal{L}$ value, both the $\lambda$ norm residual and the $x$ one, and finally the dual gap.\\
+Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\varepsilon$ value to check the $\lambda$ residual.\\
+All the values assumed by $x$, $\lambda$, each $\lambda$-norm and $x$-norm residual, the number of iterations, the value of the Lagrangian function and the gap at the current iteration are displayed 
+step by step and stored in a \textit{csv} file. At the end of the algorithm runs, the collected values are used to display a convergence plot (\textit{iterations} vs \textit{Lagrangian value}), a residual visualization plot of the 
+$\lambda$-norm and $x$-norm (\textit{iterations} vs $\lambda$/$x$\textit{-norms}) and finally a gap residual plot (\textit{iterations} vs $\phi(\lambda_t) - f(x^*)$). All the duality gaps and the resulting value 
+of the Lagrangian functions are saved too in a dictionary and printed at the end for the sake of identify the best duality gap (among the different update rules) and the function value.\\
+During the execution of the algorithm, the initial parameters are showed, as well as the result of \textit{JuMP.jl}. Then, the customized \texttt{ADAGRAD} starts with the three different variations, 
+showing at each iteration the values described before (the time elapsed, the $\mathcal{L}$ value, both the $\lambda$ norm residual and the $x$ one, and the dual gap).\\
 In order to test the program on different problem dimensions, we have chosen different sizes to perform our experiments, in order to have a "grid search" of different experimentations:
 
 \begin{center}
   \begin{tabular}[H]{| L | L | L | L |}
     \hline
-    \mathbf{n} & \mathbf{K} & \mathbf{\epsilon} & \mathbf{max\_iter} \\
+    \mathbf{n} & \mathbf{K} & \pmb{\varepsilon} & \mathbf{max\_iter} \\
     \hline
-    10 & \left[3,5,7\right] & 10^{-6} & 100000 \\
+    2 & \left[1, 2\right] & 10^{-6} & 100000 \\
     \hline
-    50 & \left[13,25,37\right] & 10^{-6} & 100000 \\
+    5 & \left[2, 3, 4\right] & 10^{-6} & 100000 \\
     \hline
-    100 & \left[25,50,75\right] & 10^{-6} & 100000 \\
+    10 & \left[3, 5, 7\right] & 10^{-6} & 100000 \\
     \hline
-    250 & \left[70,125,190\right] & 10^{-6} & 100000 \\
+    20 & \left[5, 10, 15\right] & 10^{-6} & 100000 \\
     \hline
-    % 500 & \left[125,250,375\right] & 10^{-6} & 100000 \\
-    % \hline
+    25 & \left[7, 13, 19\right] & 10^{-6} & 100000 \\
+    \hline
+    40 & \left[10, 20, 30\right] & 10^{-6} & 100000 \\
+    \hline
+    50 & \left[10, 20, 30, 40\right] & 10^{-6} & 100000 \\
+    \hline
+    100 & \left[20, 33, 50, 66, 80\right] & 10^{-6} & 100000 \\
+    \hline
   \end{tabular}  
 \end{center}
 
-The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled, modules are loaded and the needed memory is computed, 
-then the next executions are much much faster. We suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=\left[1,2\right]$) and ignore the results, and then start the experiments with 
-the values of the previous table.\\
+Note that in each execution also the value of $defl$ was set to true.\\
+The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled, all modules are loaded and the needed memory is computed, 
+then the next executions are much much faster. We suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=\left[1,2\right]$) and ignore the results, and then start the experiments with whatever value you choose.\\
 The creation of the matrix $Q$ and the starting value of the iterates $x$ and $\lambda$ are a key point for the algorithm. The matrix $Q$ is created using a support matrix $A\_help$ and a vector $vect$. $Q$ is 
 constructed using the eigenvalue decomposition $A\_help * vect * A\_help^{-1}$, by choosing an appropriate non singular matrix $A\_help$ and a vector of eigenvalues $vect$ which is filled with positive numbers,
 and a non-arbitrary number of zeros based on a certain probability.\\
 What has been observed is that having a very bad conditioned matrix $Q$ (with many $0$ eigenvalues) results in an unstable optimization, with the value of the Lagrangian and the gap oscillating between big positive 
 numbers and big negative ones.\\
+In alternative, $Q$ can be created as a covariance matrix, computing $A\_help^T * A\_help$ obtaining a surely positive semidefinite matrix which is also symmetric.\\
 When instead $Q$ has a lower magnitude of $0$ eigenvalues or only positive eigenvalues, the problem is well conditioned and the values returned at each iteration are consistent.\\
-Another observation regard the subgradient. Being the $\phi$ non differentiable in the general case, the direction is not guaranteed to be ascent/descent. So we keep the best function value, best iteration, best $x$ 
-and $\lambda$ to get the suboptimal solution found.
+Another observation regard the subgradient. Being the $\phi$ non differentiable in the general case, the direction is not guaranteed to be ascent/descent. So we keep track of the best function value, best iteration, best $x$ 
+and $\lambda$ to get the suboptimal solution found. This result sometimes in the Lagrangian function minimized instead of be maximized. This is due to the fact that there is no warranty that the direction is an ascent one.\\
+Lastly, we can observe that using the deflection result in a more "stable" optimization, with the value of $\mathcal{L}$ oscillating in a certain interval. In addition, the update rule $2$ (which does not depend on the previous $\lambda$) 
+seems to be the most effective in general.\\[1em]
+We can report now some plots comparing the results of the executions obtained together with the total time spent in the algorithm execution, with fixed value of $n=40$ and number of simplices set $K=30$ we will see the execution using the 
+three different update rules.
 
+% \newgeometry{left=0.5cm, right=0.5cm, bottom=0.5cm, top=0.5cm}
+
+% \begin{center}
+%   {\large\bfseries Update rule $\mathbf{1}$}  
+% \end{center}
+
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=1_n=40_K=30_defl=false_gap=335.05.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=1_n=40_K=30_defl=true_gap=28.9.png}
+%   \end{subfigure}
+%   \caption{Convergence of dual function}
+%   \label{fig:rule-1-n-40-k-30}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=1_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=1_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Gaps of the previous example}
+%   \label{fig:rule-1-n-40-k-30-gaps}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=1_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=1_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Residual $\lambda$ of the previous example}
+%   \label{rule-1-n-40-k-30-lambda}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=1_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=1_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Residual $x$ of the previous example}
+%   \label{fig:rule-1-n-40-k-30-x}
+% \end{figure}
+
+% \newpage
+
+% \begin{center}
+%   {\large\bfseries Update rule $\mathbf{2}$}
+% \end{center}
+
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=2_n=40_K=30_defl=false_gap=357.08.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=2_n=40_K=30_defl=true_gap=28.9.png}
+%   \end{subfigure}
+%   \caption{Convergence of dual function}
+%   \label{fig:rule-2-n-40-k-30}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=2_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=2_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Gaps of the previous example}
+%   \label{fig:rule-2-n-40-k-30-gaps}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=2_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=2_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Residual $\lambda$ of the previous example}
+%   \label{fig:rule-2-n-40-k-30-lambda}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=2_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=2_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Residual $x$ of the previous example}
+%   \label{fig:rule-2-n-40-k-30-x}
+% \end{figure}
+
+% \newpage
+
+% \begin{center}
+%   {\large\bfseries Update rule $\mathbf{3}$}
+% \end{center}
+
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=3_n=40_K=30_defl=false_gap=389.13.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=3_n=40_K=30_defl=true_gap=28.9.png}
+%   \end{subfigure}
+%   \caption{Convergence of dual function}
+%   \label{fig:rule-3-n-40-k-30}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=3_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=3_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Gaps of the previous example}
+%   \label{fig:rule-3-n-40-k-30-gaps}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=3_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=3_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Residual $\lambda$ of the previous example}
+%   \label{fig:rule-3-n-40-k-30-lambda}
+% \end{figure}
+% \begin{figure}[H]
+%   \begin{subfigure}{.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=3_n=40_K=30_defl=false.png}
+%   \end{subfigure}
+%   \begin{subfigure}{.5\textwidth}
+%     \centering
+%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=3_n=40_K=30_defl=true.png}
+%   \end{subfigure}
+%   \caption{Residual $x$ of the previous example}
+%   \label{fig:rule-3-n-40-k-30-x}
+% \end{figure}
+
+\restoregeometry
 
 \newpage
 
@@ -694,48 +872,52 @@ And finally putting this into the main problem, we get:
 
 Utterly following the definition, we state that $s$ is a subgradient of $\psi$ at $\lambda_{t-1}$
 \[
-  \psi(y) \le \psi(x) + s(y-x) \quad \forall y \in \mathbb{R}^n  
+  \psi( \lambda ) \le \psi(x) + s^T (\lambda - x) \quad \forall \lambda \in \mathbb{R}^n  
 \]
 which reordering the term can be written as
 \[
-  \langle s, y-x \rangle \ge \psi(y) - \psi(x) \quad \forall y \in \mathbb{R}^n  
+  s^T (\lambda - x) \ge \psi(\lambda) - \psi(x) \quad \forall \lambda \in \mathbb{R}^n  
 \]
-Now, since we want to compute the subgradient at the point $x = \lambda_{t-1}$ (we will omit $\forall y \in \mathbb{R}^n$ in the next steps)
-\[
-  \langle s, y - \lambda_{t-1} \rangle \ge \psi(y) - \psi(\lambda_{t-1})   
-\]
-Substituting $y = \lambda$, calling $v_1 = \psi(\lambda_{t-1})$, and using the function at our disposal, we have to solve the following inequality
-\[
-  \langle s, \lambda - \lambda_{t-1} \rangle \ge x^T Q x + q x - \lambda x - v_1
-\]
-Since we are computing the subgradient step by step on the function $\psi$, also the quantity $x$ is a known quantity. As a consequence, we can call 
-the quantity $x^T Q x + q x = v_2$, obtaining 
-\[
-  \langle s, \lambda - \lambda_{t-1} \rangle \ge v_2 - \lambda x - v_1
-\]
-Either we can solve the above inequality, or better we can apply the following reasoning. The subdifferential is the set containing all the numbers in the 
+% We can use the rules defined for the subgradient to solve this complex inequality. By using the addition rule, we can split $\psi$ in two separate functions:
+% \begin{align*}
+%   \psi_1 (\lambda) = x^T Q x + q^T x \\
+%   \psi_2 (\lambda) = -\lambda x
+% \end{align*}
+% where we immediately notice $\psi_1$ is independent from $\lambda$. We then compute the subgradient for $\psi_1$ and $\psi_2$, and then merge the solutions.\\
+% Sinve we want to compute the subgradient at the point $x = \lambda_{t-1}$ (we will omit $\forall \lambda \in \mathbb{R}^n$ in the next steps)
+% \begin{align*}
+%   s^T (\lambda - \lambda_{t-1}) \ge \psi_1(\lambda) - \psi_1(\lambda_{t-1}) && \text{(subgradient for $\psi_1$)} \\
+%   s^T (\lambda - \lambda_{t-1}) \ge \psi_2(\lambda) - \psi_2(\lambda_{t-1}) && \text{(subgradient for $\psi_2$)}
+% \end{align*}   
+% Using the function $\psi_1$ and $\psi_2$, we have to solve the following inequalities
+% \begin{align*}
+%   s^T (\lambda - \lambda_{t-1}) \ge x^T Q x + q^T x - x^T Q x - q^T x && \text{($\psi_1$)} \\
+%   s^T (\lambda - \lambda_{t-1}) \ge - \lambda^T x + \lambda_{t-1}^T x && \text{($\psi_2$)} 
+% \end{align*}
+% Going on we immediately notice that 
+% \begin{align*}
+%   s^T (\lambda - \lambda_{t-1}) \ge 0 && \text{($\psi_1$)} \\
+%   s^T (\lambda - \lambda_{t-1}) \ge (\lambda_{t-1}^T - \lambda^T) x && \text{($\psi_2$)} 
+% \end{align*}
+% where $x$ is a known quantity.
+
+% Since we are computing the subgradient step by step on the function $\psi$, also the quantity $x$ is a known quantity. As a consequence, we can call 
+% the quantity $x^T Q x + q^T x = v_2$, obtaining 
+% \[
+%   s^T (\lambda - \lambda_{t-1}) \ge v_2 - \lambda^T x - v_1
+% \]
+% Calling $v = v_2 - v_1$
+% \begin{align*}
+%   s^T (\lambda - \lambda_{t-1}) \ge v - \lambda^T x \\
+%   s^T \ge \dfrac{v - \lambda^T x}{\lambda - \lambda_{t-1}}
+% \end{align*} 
+Either we can solve the above complex inequality, or better we can apply the following reasoning. The subdifferential is the set containing all the numbers in the 
 interval $\left[a,b\right]$ such that
 \begin{align*}
   a = \lim_{\lambda \rightarrow \lambda_0^-} \dfrac{\psi(\lambda) - \psi(\lambda_{t-1})}{\lambda - \lambda_{t-1}} \\
   b = \lim_{\lambda \rightarrow \lambda_0^+} \dfrac{\psi(\lambda) - \psi(\lambda_{t-1})}{\lambda - \lambda_{t-1}}
 \end{align*}
-% having then 
-% \[
-%   \partial \psi(\lambda_{t-1}) = \{ s \in \mathbb{R}^n : s \text{ is a subgradient at } \lambda_{t-1} \}
-% \]
-
-% In order to have our ascent direction of our dual function, we need to compute the subgradient of the $\psi$ function at the previous point $\lambda_{t-1}$
-% \begin{align*}
-%   \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}}
-% \end{align*}
-% Being everything constant except for the relaxed constraint, we have the subgradient with respect to the set of inequality constraints $h$ 
-% \begin{align*}
-%   \dfrac{\partial h(\lambda_{t-1})}{\partial \lambda_{t-1}} = \dfrac{\partial}{\partial \lambda_{t-1}} - \left\langle \lambda_{t-1},x \right\rangle
-% \end{align*}
-% Assuming we are at step $t$ of our iterations, then we will use the primal variable $x_{t-1}$ obtained in the previous step. As a consequence, the gradient is simply given by
-% \[
-%   \dfrac{\partial \psi_\lambda(\lambda_{t-1})}{\partial \lambda_{t-1}} = - x_{t-1}
-% \]
+where the $^+$ and $^-$ portion must have a certain value greater than zero (order of $10^{-2}$).
 
 
 \section{Appendix C: \texorpdfstring{$\gamma$}{TEXT} computation}

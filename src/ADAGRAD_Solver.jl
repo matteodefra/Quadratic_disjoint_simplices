@@ -433,6 +433,11 @@ function my_ADAGRAD(solver)
         # Compute Lagrangian function value
         L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
 
+        if isnan( L_val[1] ) || any( isnan, solver.x ) || any( isnan, solver.λ )
+            println("Some NaN values detected")
+            break
+        end
+
         # Storing current relaxation value
         push!(solver.relaxation_values, L_val[1])
 
@@ -456,6 +461,11 @@ function my_ADAGRAD(solver)
 
         # Compute current dual_gap
         current_gap = solver.Off_the_shelf_primal - solver.relaxation_values[end]
+
+        if isnan( current_gap )
+            println("Some NaN values detected")
+            break
+        end
 
         if L_val[1] > solver.best_lagrangian && current_gap > 0
             solver.best_lagrangian = L_val[1]
@@ -486,10 +496,6 @@ function my_ADAGRAD(solver)
             @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
         end
 
-        if isnan( solver.relaxation_values[end] ) || isnan( solver.x_distances[end] ) || isnan( solver.λ_distances[end] ) || isnan( current_gap )
-            println("Some NaN values detected")
-            break
-        end
         # Add to DataFrame to save results
         push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
 

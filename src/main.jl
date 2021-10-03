@@ -107,7 +107,7 @@ function testing(n_list, K_list, deflections)
             global vect = abs.(randn((n,1)))
 
             # Random number used to set zeros
-            global prob = 0.4#abs(rand())
+            global prob = abs(rand())
 
             if prob > 0.5
                 println("Prob greater than zero")

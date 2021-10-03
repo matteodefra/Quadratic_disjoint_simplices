@@ -557,182 +557,122 @@ The code was executed using Julia \textit{REPL} tool. It has a slowish startup t
 then the next executions are much much faster. We suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=\left[1,2\right]$) and ignore the results, and then start the experiments with whatever value you choose.\\
 The creation of the matrix $Q$ and the starting value of the iterates $x$ and $\lambda$ are a key point for the algorithm. The matrix $Q$ is created using a support matrix $A\_help$ and a vector $vect$. $Q$ is 
 constructed using the eigenvalue decomposition $A\_help * vect * A\_help^{-1}$, by choosing an appropriate non singular matrix $A\_help$ and a vector of eigenvalues $vect$ which is filled with positive numbers,
-and a non-arbitrary number of zeros based on a certain probability.\\
+and an arbitrary number of zeros (one fifth of the dimension $n$) based on a certain probability.\\
 What has been observed is that having a very bad conditioned matrix $Q$ (with many $0$ eigenvalues) results in an unstable optimization, with the value of the Lagrangian and the gap oscillating between big positive 
 numbers and big negative ones.\\
 In alternative, $Q$ can be created as a covariance matrix, computing $A\_help^T * A\_help$ obtaining a surely positive semidefinite matrix which is also symmetric.\\
 When instead $Q$ has a lower magnitude of $0$ eigenvalues or only positive eigenvalues, the problem is well conditioned and the values returned at each iteration are consistent.\\
 Another observation regard the subgradient. Being the $\phi$ non differentiable in the general case, the direction is not guaranteed to be ascent/descent. So we keep track of the best function value, best iteration, best $x$ 
 and $\lambda$ to get the suboptimal solution found. This result sometimes in the Lagrangian function minimized instead of be maximized. This is due to the fact that there is no warranty that the direction is an ascent one.\\
-Lastly, we can observe that using the deflection result in a more "stable" optimization, with the value of $\mathcal{L}$ oscillating in a certain interval. In addition, the update rule $2$ (which does not depend on the previous $\lambda$) 
+Lastly, we can observe that using the deflection result in a more "stable" optimization, with the value of $\mathcal{L}$ stabilizing in a certain interval. In addition, the update rule $2$ (which does not depend on the previous $\lambda$) 
 seems to be the most effective in general.\\[1em]
-We can report now some plots comparing the results of the executions obtained together with the total time spent in the algorithm execution, with fixed value of $n=40$ and number of simplices set $K=30$ we will see the execution using the 
-three different update rules.
+We can report now some plots comparing the results of the executions obtained together with the total time spent in the algorithm execution, with fixed value of $n=50$, number of simplices set $K=40$, first using a positive definite $Q$
+and the a positive semidefinite $Q$.\\
+Following, the table will sum up the results obtained with the function value, the dual gap, number of iterations and total timings.
 
-% \newgeometry{left=0.5cm, right=0.5cm, bottom=0.5cm, top=0.5cm}
+\newgeometry{left=0.5cm, right=0.5cm, bottom=0.5cm, top=0.5cm}
 
-% \begin{center}
-%   {\large\bfseries Update rule $\mathbf{1}$}  
-% \end{center}
+\begin{center}
+  {\large\bfseries Positive definite $\mathbf{Q}$}
+\end{center}
 
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=1_n=40_K=30_defl=false_gap=335.05.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=1_n=40_K=30_defl=true_gap=28.9.png}
-%   \end{subfigure}
-%   \caption{Convergence of dual function}
-%   \label{fig:rule-1-n-40-k-30}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=1_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=1_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Gaps of the previous example}
-%   \label{fig:rule-1-n-40-k-30-gaps}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=1_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=1_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Residual $\lambda$ of the previous example}
-%   \label{rule-1-n-40-k-30-lambda}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=1_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=1_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Residual $x$ of the previous example}
-%   \label{fig:rule-1-n-40-k-30-x}
-% \end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=false.png}
+  \caption{Update rule 1 without deflection}
+  \label{fig:rule-1-n-50-k-40}
+\end{figure}
 
-% \newpage
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=true.png}
+  \caption{Update rule 1 with deflection}
+  \label{fig:rule-1-n-50-k-40-defl}
+\end{figure}
 
-% \begin{center}
-%   {\large\bfseries Update rule $\mathbf{2}$}
-% \end{center}
+\newpage
 
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=2_n=40_K=30_defl=false_gap=357.08.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=2_n=40_K=30_defl=true_gap=28.9.png}
-%   \end{subfigure}
-%   \caption{Convergence of dual function}
-%   \label{fig:rule-2-n-40-k-30}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=2_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=2_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Gaps of the previous example}
-%   \label{fig:rule-2-n-40-k-30-gaps}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=2_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=2_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Residual $\lambda$ of the previous example}
-%   \label{fig:rule-2-n-40-k-30-lambda}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=2_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=2_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Residual $x$ of the previous example}
-%   \label{fig:rule-2-n-40-k-30-x}
-% \end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=false.png}
+  \caption{Update rule 2 without deflection}
+  \label{fig:rule-2-n-50-k-40}
+\end{figure}
 
-% \newpage
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=true.png}
+  \caption{Update rule 2 with deflection}
+  \label{fig:rule-2-n-50-k-40-defl}
+\end{figure}
 
-% \begin{center}
-%   {\large\bfseries Update rule $\mathbf{3}$}
-% \end{center}
+\newpage
 
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=3_n=40_K=30_defl=false_gap=389.13.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Convergence_rule=3_n=40_K=30_defl=true_gap=28.9.png}
-%   \end{subfigure}
-%   \caption{Convergence of dual function}
-%   \label{fig:rule-3-n-40-k-30}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=3_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Gaps_rule=3_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Gaps of the previous example}
-%   \label{fig:rule-3-n-40-k-30-gaps}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=3_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_rule=3_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Residual $\lambda$ of the previous example}
-%   \label{fig:rule-3-n-40-k-30-lambda}
-% \end{figure}
-% \begin{figure}[H]
-%   \begin{subfigure}{.49\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=3_n=40_K=30_defl=false.png}
-%   \end{subfigure}
-%   \begin{subfigure}{.5\textwidth}
-%     \centering
-%     \includegraphics[scale=0.11]{pics/n=40/Residual_x_rule=3_n=40_K=30_defl=true.png}
-%   \end{subfigure}
-%   \caption{Residual $x$ of the previous example}
-%   \label{fig:rule-3-n-40-k-30-x}
-% \end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=false.png}
+  \caption{Update rule 3 without deflection}
+  \label{fig:rule-3-n-50-k-40}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=true.png}
+  \caption{Update rule 3 with deflection}
+  \label{fig:rule-3-n-50-k-40-defl}
+\end{figure}
+
+\newpage
+
+\begin{center}
+  {\large\bfseries Positive semidefinite $\mathbf{Q}$}
+\end{center}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=false.png}
+  \caption{Update rule 1 without deflection}
+  \label{fig:rule-1-n-50-k-40-psdQ}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=true.png}
+  \caption{Update rule 1 with deflection}
+  \label{fig:rule-1-n-50-k-40-defl-psdQ}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=false.png}
+  \caption{Update rule 2 without deflection}
+  \label{fig:rule-2-n-50-k-40-psdQ}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=true.png}
+  \caption{Update rule 2 with deflection}
+  \label{fig:rule-2-n-50-k-40-defl-psdQ}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=false.png}
+  \caption{Update rule 3 without deflection}
+  \label{fig:rule-3-n-50-k-40-psdQ}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=true.png}
+  \caption{Update rule 3 with deflection}
+  \label{fig:rule-3-n-50-k-40-defl-psdQ}
+\end{figure}
 
 \restoregeometry
 

@@ -15,6 +15,7 @@
 \usepackage{float}
 \usepackage{hyperref}
 \usepackage{bookmark}
+\usepackage{multirow}
 \usepackage{pdfpages}
 \usepackage{subcaption}
 \usepackage{sectsty}
@@ -35,6 +36,9 @@
 
 \setlength{\tabcolsep}{20pt}
 \renewcommand{\arraystretch}{1.5}
+
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
 
 \newcommand{\myrule} [3] []{
     \begin{center}
@@ -573,7 +577,7 @@ Following, the table will sum up the results obtained with the function value, t
 \newgeometry{left=0.5cm, right=0.5cm, bottom=0.5cm, top=0.5cm}
 
 \begin{center}
-  {\large\bfseries Positive definite $\mathbf{Q}$}
+  {\Large\bfseries Positive definite $\mathbf{Q}$}
 \end{center}
 
 \begin{figure}[H]
@@ -625,7 +629,7 @@ Following, the table will sum up the results obtained with the function value, t
 \newpage
 
 \begin{center}
-  {\large\bfseries Positive semidefinite $\mathbf{Q}$}
+  {\Large\bfseries Positive semidefinite $\mathbf{Q}$}
 \end{center}
 
 \begin{figure}[H]
@@ -673,6 +677,44 @@ Following, the table will sum up the results obtained with the function value, t
   \caption{Update rule 3 with deflection}
   \label{fig:rule-3-n-50-k-40-defl-psdQ}
 \end{figure}
+
+\newpage
+
+\begin{table}[H]
+  \centering
+  \resizebox{\columnwidth}{!}{%
+  \begin{tabular}{| c | c | c | c | c | c | c | c | c |}
+    \hline
+    $\mathbf{Q}$ & {\itshape Update rule} & {\itshape defl} & {\itshape total iter} & {\itshape total time (sec)} & {\itshape Optimal} & {\itshape Best } $\phi(\lambda) - f(x^*)$ & {\itshape Best iteration} & {\itshape Best } $\psi(\lambda)$  \\
+    \hline
+    \multirow{6}{*}{P.D.} & \multirow{2}{*}{$1$} & {\itshape false} & $7$ & $0.0016$ & $\lambda$ & $27.54401$ & $2$ & $78.56617$ \\
+    \cline{3-9}
+     & & {\itshape true} & $1807$ & $0.7827$ & $\lambda$ & $39.80405$ & $32$ & $66.30613$ \\
+    \cline{2-9}
+     & \multirow{2}{*}{$2$} & {\itshape false} & $18057$ & $54.86$ & $\lambda$ & $37.33086$ & $18057$ & $68.77932$ \\ 
+    \cline{3-9}
+     & & {\itshape true} & $2915$ & $1.8307$ & $\lambda$ & $35.85367$ & $5$ & $70.25651$ \\ 
+    \cline{2-9}   
+     & \multirow{2}{*}{$3$} & {\itshape false} & $5560$ & $6.3576$ & $\lambda$ & $96.32328$ & $1$ & $9.78689$ \\
+    \cline{3-9}
+     & & {\itshape true} & $1983$ & $0.827$ & $\lambda$ & $95.91524$ & $1$ & $10.19493$ \\
+    \hline
+    \multirow{6}{*}{P.SD.} & \multirow{2}{*}{$1$} & {\itshape false} & $7024$ & $10.1979$ & $\lambda$ & $151.9145$ & $2$ & $0.77504$ \\
+    \cline{3-9}
+     & & {\itshape true} & $1624$ & $1.0509$ & $\lambda$ & $155.3109$ & $2$ & $-2.62131$ \\
+    \cline{2-9}
+    & \multirow{2}{*}{$2$} & {\itshape false} & $9773$ & $17.715$ & $\lambda$ & $152.63745$ & $9773$ & $0.05209$ \\ 
+    \cline{3-9}
+     & & {\itshape true} & $2$ & $0.0005$ & $\lambda$ & $152.4116$ & $2$ & $0.27795$ \\ 
+    \cline{2-9}   
+     & \multirow{2}{*}{$3$} & {\itshape false} & $4908$ & $4.7208$ & $\lambda$ & $192.6884$ & $1$ & $-39.99881$ \\
+    \cline{3-9}
+     & & {\itshape true} & $1912$ & $0.6989$ & $\lambda$ & $210.7933$ & $1$ & $-58.1038$ \\
+    \hline
+  \end{tabular}%
+  }
+\end{table}
+
 
 \restoregeometry
 

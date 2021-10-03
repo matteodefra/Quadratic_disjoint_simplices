@@ -1,7 +1,8 @@
 import pandas as pd
 
-# Positive definite Q
-    
+# n = 50, K = 40
+# Positive definite Q   
+
 update1_deffalse = pd.read_csv('results/pd_Q/n=50/logs/results_n=50_K=40_update=1_defl=false.csv', delimiter=',')
 update1_deftrue = pd.read_csv('results/pd_Q/n=50/logs/results_n=50_K=40_update=1_defl=true.csv', delimiter=',')
 update2_deffalse = pd.read_csv('results/pd_Q/n=50/logs/results_n=50_K=40_update=2_defl=false.csv', delimiter=',')
@@ -17,6 +18,64 @@ psd_update2_deffalse = pd.read_csv('results/psd_Q/n=50/logs/results_n=50_K=40_up
 psd_update2_deftrue = pd.read_csv('results/psd_Q/n=50/logs/results_n=50_K=40_update=2_defl=true.csv', delimiter=',')
 psd_update3_deffalse = pd.read_csv('results/psd_Q/n=50/logs/results_n=50_K=40_update=3_defl=false.csv', delimiter=',')
 psd_update3_deftrue = pd.read_csv('results/psd_Q/n=50/logs/results_n=50_K=40_update=3_defl=true.csv', delimiter=',')
+
+
+# n = 100, K = 20 
+
+# Positive definite Q   
+
+# update1_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=20_update=1_defl=false.csv', delimiter=',')
+# update1_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=20_update=1_defl=true.csv', delimiter=',')
+# update2_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=20_update=2_defl=false.csv', delimiter=',')
+# update2_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=20_update=2_defl=true.csv', delimiter=',')
+# update3_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=20_update=3_defl=false.csv', delimiter=',')
+# update3_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=20_update=3_defl=true.csv', delimiter=',')
+
+# n = 100, K = 33
+
+# update1_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=33_update=1_defl=false.csv', delimiter=',')
+# update1_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=33_update=1_defl=true.csv', delimiter=',')
+# update2_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=33_update=2_defl=false.csv', delimiter=',')
+# update2_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=33_update=2_defl=true.csv', delimiter=',')
+# update3_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=33_update=3_defl=false.csv', delimiter=',')
+# update3_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=33_update=3_defl=true.csv', delimiter=',')
+
+# n = 100, K = 50
+
+# update1_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=50_update=1_defl=false.csv', delimiter=',')
+# update1_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=50_update=1_defl=true.csv', delimiter=',')
+# update2_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=50_update=2_defl=false.csv', delimiter=',')
+# update2_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=50_update=2_defl=true.csv', delimiter=',')
+# update3_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=50_update=3_defl=false.csv', delimiter=',')
+# update3_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=50_update=3_defl=true.csv', delimiter=',')
+
+# n = 100, K = 66
+
+# update1_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=66_update=1_defl=false.csv', delimiter=',')
+# update1_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=66_update=1_defl=true.csv', delimiter=',')
+# update2_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=66_update=2_defl=false.csv', delimiter=',')
+# update2_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=66_update=2_defl=true.csv', delimiter=',')
+# update3_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=66_update=3_defl=false.csv', delimiter=',')
+# update3_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=66_update=3_defl=true.csv', delimiter=',')
+
+# n = 100, K = 80
+
+# update1_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=80_update=1_defl=false.csv', delimiter=',')
+# update1_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=80_update=1_defl=true.csv', delimiter=',')
+# update2_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=80_update=2_defl=false.csv', delimiter=',')
+# update2_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=80_update=2_defl=true.csv', delimiter=',')
+# update3_deffalse = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=80_update=3_defl=false.csv', delimiter=',')
+# update3_deftrue = pd.read_csv('results/pd_Q/n=100/logs/results_n=100_K=80_update=3_defl=true.csv', delimiter=',')
+
+# n = 25, K = 13
+
+# psd_update1_deffalse = pd.read_csv('results/psd_Q/n=25/logs/results_n=25_K=13_update=1_defl=false.csv', delimiter=',')
+# psd_update1_deftrue = pd.read_csv('results/psd_Q/n=25/logs/results_n=25_K=13_update=1_defl=true.csv', delimiter=',')
+# psd_update2_deffalse = pd.read_csv('results/psd_Q/n=25/logs/results_n=25_K=13_update=2_defl=false.csv', delimiter=',')
+# psd_update2_deftrue = pd.read_csv('results/psd_Q/n=25/logs/results_n=25_K=13_update=2_defl=true.csv', delimiter=',')
+# psd_update3_deffalse = pd.read_csv('results/psd_Q/n=25/logs/results_n=25_K=13_update=3_defl=false.csv', delimiter=',')
+# psd_update3_deftrue = pd.read_csv('results/psd_Q/n=25/logs/results_n=25_K=13_update=3_defl=true.csv', delimiter=',')
+
 
 
 print("Positive definite Q\n")

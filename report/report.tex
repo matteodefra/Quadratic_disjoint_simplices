@@ -31,6 +31,10 @@
 %Includes "References" in the table of contents
 \usepackage[nottoc]{tocbibind}
 \usepackage{appendix}
+\usepackage{xcolor,colortbl}
+
+
+\newcommand{\highlight}[1]{{\cellcolor{yellow!30} #1}}
 
 \setlength\parindent{0pt}
 
@@ -373,7 +377,7 @@ For the dual variables, after we obtain the $\hat{\lambda}_{t+1}$, we use the pr
 \]
 which is a trivial problem tackled many times in the literature \cite{nonnegative-orthant}.\\
 % Projection over non negative orthant is a trivial problem and is solved by simply maximizing componentwise $\lambda_t$ between $\left[ 0,P_\mathcal{X}(\hat{\lambda}_t) \right]$ (FORSE NON PROPRIO, LA PROIEZIONE NON È EUCLIDEA MA IN BASE ALLA MATRICE $G$).\\
-We need also to derive an update for the primal variables, which are needed at each iteration in order to compute the dual function $\psi( \lambda )$ and the gradient $\nabla_\lambda \psi( \lambda )$. Given the previous multiplier value $\lambda_t$
+We need also to derive an update for the primal variables, which are needed at each iteration in order to compute the dual function $\psi( \lambda )$ and the subgradient $\nabla_\lambda \psi( \lambda )$. Given the previous multiplier value $\lambda_t$
 \[
   x_{t+1} = \argmin_{x \in \mathcal{Y}} \{ x^T Q x + q x - \left\langle \lambda_t,x \right\rangle \}
 \]
@@ -469,7 +473,7 @@ a linear system that can be solved directly and efficiently by computing the piv
 which can be solved efficiently through forward substitution (for the matrix $L$) and back substitution (for the matrix $U$) with a complexity of $O((n+K)^2)$.\\
 In the most general case the pivoted LU factorization is preferred, but we will see in the next chapter that the implementation language automatically identify the best 
 factorization to use (for example if the full matrix is positive definite, \textit{Cholesky} is better, as well as if the matrix is symmetric, the \textit{LDL} or \textit{Bunch-Kaufman} factorization are better).\\ 
-Lastly, regarding the stopping condition for the algorithm termination, we can check primal and dual variables. Follows that, given a certain value of tolerance $\varepsilon$, we have %respectively for the primal and dual variables
+Lastly, regarding the stopping condition for the algorithm termination, we can check the dual variables residual. Follows that, given a certain value of tolerance $\varepsilon$, we have %respectively for the primal and dual variables
 \begin{equation}
     \|\lambda_{t} - \lambda_{t-1}\|_2 \le \varepsilon
   \label{eqn:stopping-condition}
@@ -484,7 +488,7 @@ From this we understand that having a zero duality gap implies optimality of the
   f(x^*) - \psi(\lambda_i) \le \tau  
 \] 
 for each $\lambda_i$ computed during iterations.\\
-Lastly, an optional parameter is given as input to the algorithm. The parameter $defl$ is a boolean value indicating the use of deflection or not, whose derivation is described in the Appendix C.\\
+Lastly, an optional parameter is given as input to the algorithm. The parameter $defl$ is a boolean value indicating the use of deflection or not, whose derivation is described in the Appendix \ref{sec:appendix_C}.\\
 Putting everything together, we obtain a slightly different algorithm than \ref{alg:adagrad}:
 \begin{flushleft}
   \begin{minipage}{\textwidth}
@@ -498,7 +502,7 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
           \State $x_0 \gets 0$
           \For{$t \gets 1$ to $T$}
             \State $Loss \gets f(x_{t-1})$
-            \State $g_t \gets \dfrac{\partial \psi_\lambda(\lambda)}{\partial \lambda}$\Comment{Compute subgradient}
+            \State $g_t \gets \dfrac{\partial \psi_\lambda(\lambda)}{\partial \lambda}$\Comment{Compute subgradient \ref{sec:appendix_B}}
             \If{$defl$}\Comment{Compute deflection}
                 \State Compute $\gamma$ using \ref{sec:appendix_C}
                 \State Update $g_t = \gamma g_t + (1 - \gamma) g_{t-1}$
@@ -520,13 +524,13 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
 
 
 \section{Implementation}
-The ideas above described have been implemented using Julia. The provided package give us the ability to provide the dimensions of the problem $n$ and the number of simplices $K$ for each different $n$ by input.\\
+The ideas above described have been implemented using Julia. The provided package give us the ability to provide the dimensions of the problem $n$ and the number of simplices $K$ for each different $n$ we want to test.\\
 Subsequently, the code is all automated and provide the creation of the matrix $Q \succeq 0$, $A$, the random sets $I^k$, the vector $q$ and all the required parameters. The resulting solutions 
 of the three different update rules are saved and compared with the optimal primal solution $f(x^*)$ found using the off-the-shelf solver \textit{JuMP.jl} \cite{DunningHuchetteLubin2017}.\\
 Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\varepsilon$ value to check the $\lambda$ residual.\\
 All the values assumed by $x$, $\lambda$, each $\lambda$-norm and $x$-norm residual, the number of iterations, the value of the Lagrangian function and the gap at the current iteration are displayed 
-step by step and stored in a \textit{csv} file. At the end of the algorithm runs, the collected values are used to display a convergence plot (\textit{iterations} vs \textit{Lagrangian value}), a residual visualization plot of the 
-$\lambda$-norm and $x$-norm (\textit{iterations} vs $\lambda$/$x$\textit{-norms}) and finally a gap residual plot (\textit{iterations} vs $\phi(\lambda_t) - f(x^*)$). All the duality gaps and the resulting value 
+step by step and stored in a \textit{csv} file. At the end of the algorithm runs, the collected values are used to display a convergence plot (\textit{iterations} vs $\phi(\lambda_t)$), a residual visualization plot of the 
+$\lambda$-norm and $x$-norm (\textit{iterations} vs $\lambda$/$x$\textit{-norms}) and finally a gap residual plot (\textit{iterations} vs $f(x^*) - \phi(\lambda_t)$). All the duality gaps and the resulting value 
 of the Lagrangian functions are saved too in a dictionary and printed at the end for the sake of identify the best duality gap (among the different update rules) and the function value.\\
 During the execution of the algorithm, the initial parameters are showed, as well as the result of \textit{JuMP.jl}. Then, the customized \texttt{ADAGRAD} starts with the three different variations, 
 showing at each iteration the values described before (the time elapsed, the $\mathcal{L}$ value, both the $\lambda$ norm residual and the $x$ one, and the dual gap).\\
@@ -554,6 +558,7 @@ In order to test the program on different problem dimensions, we have chosen dif
     100 & \left[20, 33, 50, 66, 80\right] & 10^{-6} & 100000 \\
     \hline
   \end{tabular}  
+  \label{tab:experiments}
 \end{center}
 
 Note that in each execution also the value of $defl$ was set to true.\\
@@ -567,13 +572,13 @@ numbers and big negative ones.\\
 In alternative, $Q$ can be created as a covariance matrix, computing $A\_help^T * A\_help$ obtaining a surely positive semidefinite matrix which is also symmetric.\\
 When instead $Q$ has a lower magnitude of $0$ eigenvalues or only positive eigenvalues, the problem is well conditioned and the values returned at each iteration are consistent.\\
 Another observation regard the subgradient. Being the $\phi$ non differentiable in the general case, the direction is not guaranteed to be ascent/descent. So we keep track of the best function value, best iteration, best $x$ 
-and $\lambda$ to get the suboptimal solution found. This result sometimes in the Lagrangian function minimized instead of be maximized. This is due to the fact that there is no warranty that the direction is an ascent one.\\
+and $\lambda$ to get the suboptimal solution found. This sometimes result in the Lagrangian function being minimized instead of maximized. This is due to the fact that there is no guarantee that the direction is an ascent one.\\
 Lastly, we can observe that using the deflection result in a more "stable" optimization, with the value of $\mathcal{L}$ stabilizing in a certain interval. In addition, the update rule $2$ (which does not depend on the previous $\lambda$) 
 seems to be the most effective in general.\\[1em]
 We can report now some plots comparing the results of the executions obtained together with the total time spent in the algorithm execution, with fixed value of $n=50$, number of simplices set $K=40$, first using a positive definite $Q$
-and the a positive semidefinite $Q$.\\
-Following, the table will sum up the results obtained with the function value, the dual gap, number of iterations and total timings.\\
-Further, we show also a sum up table of the execution with other parameters $n$ and $K$.
+and then a positive semidefinite $Q$.\\
+Following, a table will sum up all the results obtained.\\
+Further, we show also a sum up table of the execution with other parameters $n$ and $K$.\\
 
 \newgeometry{left=0.5cm, right=0.5cm, bottom=0.5cm, top=0.5cm}
 
@@ -688,7 +693,7 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
     \hline
     $\mathbf{Q}$ & {\itshape Update rule} & {\itshape defl} & {\itshape total iter} & {\itshape total time (sec)} & {\itshape Optimal} & {\itshape Best } $\phi(\lambda) - f(x^*)$ & {\itshape Best iteration} & {\itshape Best } $\psi(\lambda)$  \\
     \hline
-    \multirow{6}{*}{P.D.} & \multirow{2}{*}{$1$} & {\itshape false} & $7$ & $0.0016$ & $\lambda$ & $27.54401$ & $2$ & $78.56617$ \\
+    \multirow{6}{*}{P.D.} & \multirow{2}{*}{$1$} & {\itshape false} & $7$ & $0.0016$ & $\lambda$ & $\highlight{27.54401}$ & $2$ & $78.56617$ \\
     \cline{3-9}
      & & {\itshape true} & $1807$ & $0.7827$ & $\lambda$ & $39.80405$ & $32$ & $66.30613$ \\
     \cline{2-9}
@@ -701,7 +706,7 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
      & & {\itshape true} & $1983$ & $0.827$ & $\lambda$ & $95.91524$ & $1$ & $10.19493$ \\
     \hline
 
-    \multirow{6}{*}{P.SD.} & \multirow{2}{*}{$1$} & {\itshape false} & $7024$ & $10.1979$ & $\lambda$ & $151.9145$ & $2$ & $0.77504$ \\
+    \multirow{6}{*}{P.SD.} & \multirow{2}{*}{$1$} & {\itshape false} & $7024$ & $10.1979$ & $\lambda$ & $\highlight{151.9145}$ & $2$ & $0.77504$ \\
     \cline{3-9}
      & & {\itshape true} & $1624$ & $1.0509$ & $\lambda$ & $155.3109$ & $2$ & $-2.62131$ \\
     \cline{2-9}
@@ -730,7 +735,7 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
     \hline
     \multirow{6}{*}{$20$} & \multirow{2}{*}{$1$} & {\itshape false} & $17407$ & $207.56$ & $\lambda$ & Not valid & $0$ & Not valid \\
     \cline{3-9}
-     & & {\itshape true} & $3536$ & $13.319$ & $\lambda$ & $18.93256$ & $2$ & $277.3673$ \\
+     & & {\itshape true} & $3536$ & $13.319$ & $\lambda$ & $\highlight{18.93256}$ & $2$ & $277.3673$ \\
     \cline{2-9}
      & \multirow{2}{*}{$2$} & {\itshape false} & $24302$ & $396.62$ & $\lambda$ & Not valid & $0$ & Not valid \\ 
     \cline{3-9}
@@ -741,7 +746,7 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
      & & {\itshape true} & $3$ & $0.021$ & $\lambda$ & $144.573$ & $3$ & $151.727$ \\
     \hline
 
-    \multirow{6}{*}{$33$} & \multirow{2}{*}{$1$} & {\itshape false} & $18860$ & $265.94$ & $\lambda$ & $578.480$ & $2$ & $39.12439$ \\
+    \multirow{6}{*}{$33$} & \multirow{2}{*}{$1$} & {\itshape false} & $18860$ & $265.94$ & $\lambda$ & $\highlight{578.480}$ & $2$ & $39.12439$ \\
     \cline{3-9}
      & & {\itshape true} & $3060$ & $11.336$ & $\lambda$ & $622.0355$ & $11$ & $-4.4311$ \\
     \cline{2-9}
@@ -754,7 +759,7 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
      & & {\itshape true} & $3$ & $0.028$ & $\lambda$ & $674.0635$ & $2$ & $-56.4591$ \\
     \hline
 
-    \multirow{6}{*}{$50$} & \multirow{2}{*}{$1$} & {\itshape false} & $14139$ & $107.0964$ & $\lambda$ & $4440.370$ & $2$ & $20.7995$ \\
+    \multirow{6}{*}{$50$} & \multirow{2}{*}{$1$} & {\itshape false} & $14139$ & $107.0964$ & $\lambda$ & $\highlight{4440.370}$ & $2$ & $20.7995$ \\
     \cline{3-9}
      & & {\itshape true} & $3499$ & $13.169$ & $\lambda$ & $4458.561$ & $1$ & $2.60828$ \\
     \cline{2-9}
@@ -773,14 +778,14 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
     \cline{2-9}
     & \multirow{2}{*}{$2$} & {\itshape false} & $27690$ & $396.278$ & $\lambda$ & $32293.9$ & $27688$ & $-1.36491$ \\ 
     \cline{3-9}
-     & & {\itshape true} & $11304$ & $76.041$ & $\lambda$ & $32265.3$ & $4$ & $27.2090$ \\ 
+     & & {\itshape true} & $11304$ & $76.041$ & $\lambda$ & $\highlight{32265.3}$ & $4$ & $27.2090$ \\ 
     \cline{2-9}   
      & \multirow{2}{*}{$3$} & {\itshape false} & $16347$ & $129.622$ & $\lambda$ & $32365.5$ & $1$ & $-72.9762$ \\
     \cline{3-9}
      & & {\itshape true} & $3307$ & $12.543$ & $\lambda$ & $32387.6$ & $1$ & $-95.0997$ \\
     \hline
 
-    \multirow{6}{*}{$80$} & \multirow{2}{*}{$1$} & {\itshape false} & $4290$ & $18.700$ & $\lambda$ & $34.4769$ & $2$ & $56.6695$ \\
+    \multirow{6}{*}{$80$} & \multirow{2}{*}{$1$} & {\itshape false} & $4290$ & $18.700$ & $\lambda$ & $\highlight{34.4769}$ & $2$ & $56.6695$ \\
     \cline{3-9}
      & & {\itshape true} & $2429$ & $8.105$ & $\lambda$ & $34.7176$ & $81$ & $56.4288$ \\
     \cline{2-9}
@@ -807,9 +812,9 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
     \hline
     \multirow{2}{*}{$1$} & {\itshape false} & $14077$ & $22.044$ & $\lambda$ & Not valid & $0$ & Not valid \\
     \cline{2-8}
-     & {\itshape true} & $2136$ & $.596$ & $\lambda$ & $49.0422$ & $10$ & $20.4259$ \\
+     & {\itshape true} & $2136$ & $0.596$ & $\lambda$ & $49.0422$ & $10$ & $20.4259$ \\
     \hline
-    \multirow{2}{*}{$2$} & {\itshape false} & $14710$ & $21.287$ & $\lambda$ & $45.1122$ & $3$ & $24.3559$ \\ 
+    \multirow{2}{*}{$2$} & {\itshape false} & $14710$ & $21.287$ & $\lambda$ & $\highlight{45.1122}$ & $3$ & $24.3559$ \\ 
     \cline{2-8}
      & {\itshape true} & $5981$ & $4.258$ & $\lambda$ & $53.5208$ & $67$ & $15.9472$ \\ 
     \hline   
@@ -826,24 +831,48 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
 
 \restoregeometry
 
-We can notice from the above plots that the guarantee of having an ascent direction is not ensured. Indeed in some cases we notice how the lagrangian trend tends to decrease instead of increasing, and as a consequence the dual gap behavior tends
+We can notice from the above plots and tables that the guarantee of having an ascent direction is not ensured. Indeed in some cases we notice how the Lagrangian value trend tends to decrease instead of increasing, and as a consequence the dual gap behavior tends
 to increase, which is not what we want. That's why we always keep track of the best dual function value. Also, we see how in other cases, in particular when using deflection, the value tends to stabilize, reaching a local maxima. Regarding the 
 $\lambda$/x norm, we see how the decreasing fashion towards the imposed threshold of $10^{-6}$ is not quite smooth in most cases.\\
-In the vastly number of tries, the $\lambda$-norm is the stopping condition which terminates the execution. The threshold set on the dual gap works better on low magnitude experiments (with small $n$), while the threshold of \textit{max\_iter} is 
+We noticed also how small values of $n$ and good conditioning of the matrix $Q$ results also in reaching a global maxima (and so having a stopping condition due to dual gap, with tries with $n=2$ and $n=5$). When increasing the size of the problem $n$, the algorithm 
+tends to reach a local maxima and stay quite far from the dual gap (due to big magnitude of the subgradient).\\
+In the vastly number of tries, the $\lambda$-norm is the stopping condition which terminates the execution. The threshold set on the dual gap works better on low magnitude experiments (as we just said), while the threshold of \textit{max\_iter} is 
 never reached.
 
 \section{Code description}
 
-The code is provided in Julia through package. To try it, simply open the Julia REPL inside the current folder (specifying the \texttt{--project=.} directive) and then \texttt{instatiate}. Then you need only to \texttt{include{src/main.jl}} and 
-try values of $n$ and $K$ for yourself.\\
-All the code is inside the \texttt{src} folder:
+The code is provided in Julia through package. To try it, simply open the Julia REPL inside the current folder, and launch \texttt{julia} specifying the option\\
+\quad\quad\texttt{--project=.}\\
+then enter in the \texttt{pkg} mode using $]$ and launch\\
+\quad\texttt{instantiate}\\
+to download the required modules. Then go back to the command line tool (simply backspace) and run\\
+\quad\texttt{include(src/main.jl)}\\ 
+At this point you will be asked for values of $n$ and $K$.\\
+All the code is contained inside the \texttt{src} folder:
 \begin{itemize}
-  \item \textit{Utils.jl}: module containing some useful functions;
-  \item \textit{JuMPSolution.jl}: module computing the off-the-shelf primal solution;
-  \item \textit{ADAGRAD\_Solver.jl}: module implementing the different update rules;
+  \item \textit{Utils.jl}: module containing some useful functions:
+  \begin{itemize}
+    \item \texttt{construct\_full\_matrix($Q$, $A$, $K$)}: return the entire matrix used to solve the lagrangian relaxation;
+    \item \texttt{construct\_A($K$, $n$, $I_K$)}: return the constraint matrix $A$ as described in the report;
+    \item \texttt{compute\_lagrangian($Q$,$q$,$x$,$\lambda$)}: compute the lagrangian function $x^T Q x + q^T x - \lambda^T x$
+  \end{itemize}
+  \item \textit{JuMPSolution.jl}: module computing the off-the-shelf primal solution, containing a struct describing the problem parameters and a function to return the optimal value found
+  \item \textit{ADAGRAD\_Solver.jl}: module containing:
+  \begin{itemize}
+    \item a struct \texttt{Solver}, containing all the parameters and return value needed for the problem;
+    \item functions to compute the $\lambda$/x-norm, the subgradient, the $\gamma$ value and the update rules;
+    \item \texttt{my\_ADAGRAD}, which implement the algorithm derived in the report;
+  \end{itemize}
   \item \textit{main.jl}: used to test all the code;
 \end{itemize}
-In addition, \textit{util.sh} is a clean-up routine for the \textit{logs} and \textit{plots} produced, and \textit{analyzer.py} is used to inspect the collected \textit{.csv} files and get some stats.
+In addition, the entire project folder contains:
+\begin{itemize}
+  \item \textit{papers}: folder containing all the literature referenced in the bibliography;
+  \item \textit{results}: folder containing all the plots and logs obtained with the experimentations values of table \ref{tab:experiments};
+  \item \textit{util.sh}: a clean-up routine for the \textit{logs} and \textit{plots} produced;
+  \item \textit{analyzer.py}: used to inspect the collected \textit{.csv} files and get some stats;
+\end{itemize}
+
 
 \newpage
 
@@ -864,7 +893,7 @@ Given a matrix $A$ of size $n \times n$, the proximal term expression of a vecto
 \]
 
 \subsection{Differentiating proximal term}
-Derivation of proximal term arises from the need of obtaining the $\argmin$ $x$ of a given update function. Starting by the definition
+Derivation of proximal term arises from the need of obtaining the $\argmax$ $x$ of a given update function. Starting by the definition
 \[
   \frac{\partial \Psi_t(x)}{\partial x} = \frac{1}{2} \frac{\partial}{\partial x} \left\langle x, A x \right\rangle  
 \]
@@ -971,13 +1000,14 @@ And so is easy to see that
   H_t \lambda_t
 \end{align*} 
 And finally putting this into the main problem, we get:
-\begin{align*}
+\begin{gather*}
   \eta\, g_t + H_t\, \lambda - H_t \lambda_t = 0 \quad \implies H_t\, \lambda = H_t \lambda_t - \eta\, g_t \\
   \lambda = H_t^{-1} \left[ H_t \lambda_t - \eta\, g_t \right] = \lambda_t - \eta\, H_t^{-1}\, g_t
-\end{align*}
+\end{gather*}
 
 
 \section{Appendix B: subgradient computation}
+\label{sec:appendix_B}
 
 Utterly following the definition, we state that $s$ is a subgradient of $\psi$ at $x$
 \[
@@ -1020,7 +1050,7 @@ which reordering the term can be written as
 %   s^T (\lambda - \lambda_{t-1}) \ge v - \lambda^T x \\
 %   s^T \ge \dfrac{v - \lambda^T x}{\lambda - \lambda_{t-1}}
 % \end{align*} 
-Either we can solve the above complex inequality, or better we can apply the following reasoning. The subdifferential is the set containing all the numbers in the 
+Either we can solve the above complex inequality with unknown variables $s$ and $\lambda$, or better we can apply the following reasoning. The subdifferential is the set containing all the numbers in the 
 interval $\left[a,b\right]$ such that
 \begin{align*}
   a = \lim_{\lambda \rightarrow \lambda_0^-} \dfrac{\psi(\lambda) - \psi(\lambda_{t-1})}{\lambda - \lambda_{t-1}} \\
@@ -1031,12 +1061,12 @@ where the $^+$ and $^-$ portion must have a certain value greater than zero (ord
 
 \section{Appendix C: \texorpdfstring{$\gamma$}{TEXT} computation}
 \label{sec:appendix_C}
-Deflection is way to change the direction of the computed subgradient by using a convex combination
+Deflection is a way to change the direction of the computed subgradient by using a convex combination
 \[
   d^i = \gamma^i g^i + (1 - \gamma^i) d^{i-1}   
 \]
 where $g^i$ is the subgradient at iteration $i$ and $d^{i-1}$ is the direction computed at the previous step.\\
-To find the best $\gamma^i$ our subgradient/gradient, we could solve the problem 
+To find the best $\gamma^i$ at iteration $i$, we could solve the problem 
 \[
   \gamma^i \in \argmin{ \{ \| \gamma g^i + (1 - \gamma) d^{i-1} \|^2 : \gamma \in \left[0,1\right] \} }   
 \]

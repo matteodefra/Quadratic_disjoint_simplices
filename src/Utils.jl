@@ -66,40 +66,40 @@ end
     and obtain the result.
     Returns a tuple with the value x and μ
 =#
-function solve_lagrangian_relaxation(solver)
+# function solve_lagrangian_relaxation(solver)
 
-    # Create vector b = [λ_{t-1} - q, b]
-    o = ones((solver.K,1))
+#     # Create vector b = [λ_{t-1} - q, b]
+#     o = ones((solver.K,1))
 
-    diff = solver.λ - solver.q
+#     diff = solver.λ - solver.q
 
-    b = vcat(diff, o)
+#     b = vcat(diff, o)
 
-    # Find vector c using the Permutation matrix
-    c = solver.F.P * b
+#     # Find vector c using the Permutation matrix
+#     c = solver.F.P * b
 
-    dim = solver.n + solver.K
+#     dim = solver.n + solver.K
 
-    # Use forward substitution to find vector 
-    d = zeros((dim, 1))
+#     # Use forward substitution to find vector 
+#     d = zeros((dim, 1))
 
-    d[1] = c[1] / solver.F.L[1,1]
-    for i = 2:+1:dim
-        s = sum( solver.F.L[i,j]*d[j] for j=1:i-1 )
-        d[i] = ( c[i] - s ) / solver.F.L[i,i]
-    end
+#     d[1] = c[1] / solver.F.L[1,1]
+#     for i = 2:+1:dim
+#         s = sum( solver.F.L[i,j]*d[j] for j=1:i-1 )
+#         d[i] = ( c[i] - s ) / solver.F.L[i,i]
+#     end
 
-    # Then use back substitution to find [x μ]
-    x_μ = zeros((dim,1))
+#     # Then use back substitution to find [x μ]
+#     x_μ = zeros((dim,1))
 
-    x_μ[dim] = d[dim]/solver.F.U[dim, dim]
-    for i = dim-1:-1:1
-        s = sum( solver.F.U[i,j]*x_μ[j] for j=i+1:dim )
-        x_μ[i] = ( d[i] - s ) / solver.F.U[i,i]
-    end
+#     x_μ[dim] = d[dim]/solver.F.U[dim, dim]
+#     for i = dim-1:-1:1
+#         s = sum( solver.F.U[i,j]*x_μ[j] for j=i+1:dim )
+#         x_μ[i] = ( d[i] - s ) / solver.F.U[i,i]
+#     end
     
-    return x_μ[1:solver.n] , x_μ[solver.n + 1 : dim]
-end
+#     return x_μ[1:solver.n] , x_μ[solver.n + 1 : dim]
+# end
 
 
 

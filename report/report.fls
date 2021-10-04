@@ -257,6 +257,8 @@ INPUT /usr/share/texlive/texmf-dist/tex/latex/tocbibind/tocbibind.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/tocbibind/tocbibind.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/appendix/appendix.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/appendix/appendix.sty
+INPUT /usr/share/texlive/texmf-dist/tex/latex/colortbl/colortbl.sty
+INPUT /usr/share/texlive/texmf-dist/tex/latex/colortbl/colortbl.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdfmode.def
 INPUT /usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdfmode.def
 INPUT /home/matteo/Documents/UNIPI/CM/project/Quadratic_disjoint_simplices/report/report.aux

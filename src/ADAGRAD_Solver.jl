@@ -42,7 +42,6 @@ Create struct solver to approach the problem:
     timings::Vector{Float64}                    Store timing execution for each iteration
     gaps::Vector{Float64}                       Store dual gap found at each iteration
     update_formula::Int                         Update rule to be used  
-    Full_mat::Matrix{Float64}                   Save the full matrix to solve the lagrangian relaxation
     F::Any                                      Save the factorization of Full_mat
     A::Array{Int64}                             Save the constraint matrix A 
     Off_the_shelf_primal::Float64               f(x*) computed with an off-the-shelf solver    
@@ -80,12 +79,10 @@ mutable struct Solver
     timings :: Vector{Float64}
     gaps :: Vector{Float64}
     update_formula :: Int
-    Full_mat :: Matrix{Float64}
     F :: Any
     A :: Array{Int64}
     Off_the_shelf_primal :: Float64
 end
-
 
 #=
     Compute the function value of the Lagrangian relaxation given the current value of λ
@@ -160,8 +157,8 @@ function compute_update_rule(solver, H_t)
 
         λ = solver.iteration * solver.η * (- H_t^(-1) * avg_gradient_copy)
 
-    else
-
+    else 
+        
         if solver.deflection
     
             update_part = solver.η * H_t^(-1) * solver.d_i
@@ -303,6 +300,21 @@ function compute_gamma(solver, subgrad, previous_d)
 end
 
 
+
+function isincreasing(solver)
+
+    # Check last 20 gaps 
+    # latter_minimum = minimum(solver.gaps[1:end-1])
+
+    if solver.iteration - solver.best_iteration < 100#solver.gaps[end] < latter_minimum
+        return false
+    else
+        return true
+    end
+
+end
+
+
 #=
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
@@ -348,7 +360,7 @@ function my_ADAGRAD(solver)
         push!(solver.num_iterations, solver.iteration)
 
         # Modify η in DSS way
-        solver.η = 1 / solver.iteration
+        solver.η = 1 / sqrt(solver.iteration)
 
         # Assign previous_λ
         previous_λ = solver.λ
@@ -480,7 +492,19 @@ function my_ADAGRAD(solver)
         if check_λ_norm(solver, solver.λ, previous_λ)
             # Add last row
             push!(df, [ solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
-            break
+            # break
+        end
+
+        if solver.iteration % 2500 == 0
+
+            if isincreasing(solver)
+                println("Gap is increasing")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "INCREASING"
+                push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "INCREASING" ])
+                break
+            end
+        
         end
 
         if current_gap > 0 && current_gap <= solver.τ
@@ -500,6 +524,8 @@ function my_ADAGRAD(solver)
         push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
 
     end
+
+    GC.gc()
 
     # Log total time and iterations
     print("\n")

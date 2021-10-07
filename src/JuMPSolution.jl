@@ -20,13 +20,14 @@ function compute_solution(jump_sol)
 
     model = Model(Ipopt.Optimizer)
 
-    @variable( model, x[1:jump_sol.n] >= 0 )
+    @variable( model, x[1:jump_sol.n] )
     @objective( model, Max, x' * jump_sol.Q * x + dot(jump_sol.q, x) )
     @constraint( model, jump_sol.A * x .== ones((jump_sol.K,1)) )
+    @constraint( model, x .>= 0 )
     optimize!(model)
 
     print(model)
-    println("Objective value: ", objective_value(model))
+    # println("Objective value: ", objective_value(model))
     println("x = ", value.(x))
 
     jump_sol.opt_val = round( objective_value(model), digits = 8 )

@@ -567,6 +567,13 @@ then the next executions are much much faster. We suggest to do first executions
 The creation of the matrix $Q$ and the starting value of the iterates $x$ and $\lambda$ are a key point for the algorithm. The matrix $Q$ is created using a support matrix $A\_help$ and a vector $vect$. $Q$ is 
 constructed using the eigenvalue decomposition $A\_help * vect * A\_help^{-1}$, by choosing an appropriate non singular matrix $A\_help$ and a vector of eigenvalues $vect$ which is filled with positive numbers,
 and an arbitrary number of zeros (one fifth of the dimension $n$) based on a certain probability.\\
+Regarding the comment done before about the factorization, the entire KKT matrix is factorized using the \textit{Julia} method \texttt{factorize()}. This method identify the best factorization for the KKT matrix using some properties about it, 
+in particular:
+\begin{itemize}
+  \item If the KKT matrix is positive definite, \textit{Cholesky} is used;
+  \item If the KKT matrix is symmetric, \textit{Bunch-Kaufman} factorization is used;
+  \item If none of the above is verified, the pivoted \textit{LU} factorization is used;
+\end{itemize} 
 What has been observed is that having a very bad conditioned matrix $Q$ (with many $0$ eigenvalues) results in an unstable optimization, with the value of the Lagrangian and the gap oscillating between big positive 
 numbers and big negative ones.\\
 In alternative, $Q$ can be created as a covariance matrix, computing $A\_help^T * A\_help$ obtaining a surely positive semidefinite matrix which is also symmetric.\\
@@ -574,7 +581,7 @@ When instead $Q$ has a lower magnitude of $0$ eigenvalues or only positive eigen
 Another observation regard the subgradient. Being the $\phi$ non differentiable in the general case, the direction is not guaranteed to be ascent/descent. So we keep track of the best function value, best iteration, best $x$ 
 and $\lambda$ to get the suboptimal solution found. This sometimes result in the Lagrangian function being minimized instead of maximized. This is due to the fact that there is no guarantee that the direction is an ascent one.\\
 Lastly, we can observe that using the deflection result in a more "stable" optimization, with the value of $\mathcal{L}$ stabilizing in a certain interval. In addition, the update rule $2$ (which does not depend on the previous $\lambda$) 
-seems to be the most effective in general.\\[1em]
+seems to be the most effective in general.\\
 We can report now some plots comparing the results of the executions obtained together with the total time spent in the algorithm execution, with fixed value of $n=50$, number of simplices set $K=40$, first using a positive definite $Q$
 and then a positive semidefinite $Q$.\\
 Following, a table will sum up all the results obtained.\\
@@ -582,109 +589,109 @@ Further, we show also a sum up table of the execution with other parameters $n$ 
 
 \newgeometry{left=0.5cm, right=0.5cm, bottom=0.5cm, top=0.5cm}
 
-\begin{center}
-  {\Large\bfseries Positive definite $\mathbf{Q}$}
-\end{center}
+% \begin{center}
+%   {\Large\bfseries Positive definite $\mathbf{Q}$}
+% \end{center}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=false.png}
-  \caption{Update rule 1 without deflection}
-  \label{fig:rule-1-n-50-k-40}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=false.png}
+%   \caption{Update rule 1 without deflection}
+%   \label{fig:rule-1-n-50-k-40}
+% \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=true.png}
-  \caption{Update rule 1 with deflection}
-  \label{fig:rule-1-n-50-k-40-defl}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=true.png}
+%   \caption{Update rule 1 with deflection}
+%   \label{fig:rule-1-n-50-k-40-defl}
+% \end{figure}
 
-\newpage
+% \newpage
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=false.png}
-  \caption{Update rule 2 without deflection}
-  \label{fig:rule-2-n-50-k-40}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=false.png}
+%   \caption{Update rule 2 without deflection}
+%   \label{fig:rule-2-n-50-k-40}
+% \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=true.png}
-  \caption{Update rule 2 with deflection}
-  \label{fig:rule-2-n-50-k-40-defl}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=true.png}
+%   \caption{Update rule 2 with deflection}
+%   \label{fig:rule-2-n-50-k-40-defl}
+% \end{figure}
 
-\newpage
+% \newpage
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=false.png}
-  \caption{Update rule 3 without deflection}
-  \label{fig:rule-3-n-50-k-40}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=false.png}
+%   \caption{Update rule 3 without deflection}
+%   \label{fig:rule-3-n-50-k-40}
+% \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=true.png}
-  \caption{Update rule 3 with deflection}
-  \label{fig:rule-3-n-50-k-40-defl}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=true.png}
+%   \caption{Update rule 3 with deflection}
+%   \label{fig:rule-3-n-50-k-40-defl}
+% \end{figure}
 
-\newpage
+% \newpage
 
-\begin{center}
-  {\Large\bfseries Positive semidefinite $\mathbf{Q}$}
-\end{center}
+% \begin{center}
+%   {\Large\bfseries Positive semidefinite $\mathbf{Q}$}
+% \end{center}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=false.png}
-  \caption{Update rule 1 without deflection}
-  \label{fig:rule-1-n-50-k-40-psdQ}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=false.png}
+%   \caption{Update rule 1 without deflection}
+%   \label{fig:rule-1-n-50-k-40-psdQ}
+% \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=true.png}
-  \caption{Update rule 1 with deflection}
-  \label{fig:rule-1-n-50-k-40-defl-psdQ}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=true.png}
+%   \caption{Update rule 1 with deflection}
+%   \label{fig:rule-1-n-50-k-40-defl-psdQ}
+% \end{figure}
 
-\newpage
+% \newpage
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=false.png}
-  \caption{Update rule 2 without deflection}
-  \label{fig:rule-2-n-50-k-40-psdQ}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=false.png}
+%   \caption{Update rule 2 without deflection}
+%   \label{fig:rule-2-n-50-k-40-psdQ}
+% \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=true.png}
-  \caption{Update rule 2 with deflection}
-  \label{fig:rule-2-n-50-k-40-defl-psdQ}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=true.png}
+%   \caption{Update rule 2 with deflection}
+%   \label{fig:rule-2-n-50-k-40-defl-psdQ}
+% \end{figure}
 
-\newpage
+% \newpage
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=false.png}
-  \caption{Update rule 3 without deflection}
-  \label{fig:rule-3-n-50-k-40-psdQ}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=false.png}
+%   \caption{Update rule 3 without deflection}
+%   \label{fig:rule-3-n-50-k-40-psdQ}
+% \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=true.png}
-  \caption{Update rule 3 with deflection}
-  \label{fig:rule-3-n-50-k-40-defl-psdQ}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=true.png}
+%   \caption{Update rule 3 with deflection}
+%   \label{fig:rule-3-n-50-k-40-defl-psdQ}
+% \end{figure}
 
-\newpage
+% \newpage
 
 \begin{table}[H]
   \centering
@@ -897,40 +904,43 @@ Derivation of proximal term arises from the need of obtaining the $\argmax$ $x$ 
 \[
   \frac{\partial \Psi_t(x)}{\partial x} = \frac{1}{2} \frac{\partial}{\partial x} \left\langle x, A x \right\rangle  
 \]
-The term $y = A x$ is given by:
-\begin{align*}
-  y = 
-  \begin{bmatrix}
-    a_{11}x_1 + a_{12}x_2 + \cdots + a_{1n}x_n \\[2ex]
-    a_{21}x_1 + a_{22}x_2 + \cdots + a_{2n}x_n \\[2ex]
-    \cdots \\
-    a_{n1}x_1 + a_{n2}x_2 + \cdots + a_{nn}x_n 
-  \end{bmatrix}
-\end{align*}
-and then expanding the scalar product we obtain
-\begin{align*}
-  \left\langle x,y \right\rangle = x_1 y_1 + x_2 y_2 + \cdots + x_n y_n
-\end{align*}
-Now we can differentiate everything w.r.t. to $x$, obtaining the closed form
-\begin{align*}
-  \frac{\partial \left\langle x,y \right\rangle}{\partial x} = 
-  \begin{bmatrix}
-    \dfrac{\partial \left\langle x,y \right\rangle}{\partial x_1} \\[3ex]
-    \dfrac{\partial \left\langle x,y \right\rangle}{\partial x_2} \\[3ex]
-    \cdots \\[3ex]
-    \dfrac{\partial \left\langle x,y \right\rangle}{\partial x_n} 
-  \end{bmatrix}
-  = 
-  \begin{bmatrix}
-    2 a_{11}x_1 + \displaystyle \sum_{\mathclap{j=1, j \neq 1}}^n a_{1j} x_j + \sum_{\mathclap{i=1, i \neq 1}}^n a_{i1} x_i \\[4ex]
-    2 a_{22}x_2 + \displaystyle \sum_{\mathclap{j=1, j \neq 2}}^n a_{2j} x_j + \sum_{\mathclap{i=1, i \neq 2}}^n a_{i2} x_i \\[4ex]
-    \cdots \\[4ex]
-    2 a_{nn}x_n + \displaystyle \sum_{\mathclap{j=1, j \neq n}}^n a_{nj} x_j + \sum_{\mathclap{i=1, i \neq n}}^n a_{in} x_i \\
-  \end{bmatrix}
-\end{align*}
+which can be rewritten in a more classical form, and the derivative is immediate
+\[
+  \frac{1}{2} \frac{\partial}{\partial x} x^T A x = A x
+\]
+% \begin{align*}
+%   y = 
+%   \begin{bmatrix}
+%     a_{11}x_1 + a_{12}x_2 + \cdots + a_{1n}x_n \\[2ex]
+%     a_{21}x_1 + a_{22}x_2 + \cdots + a_{2n}x_n \\[2ex]
+%     \cdots \\
+%     a_{n1}x_1 + a_{n2}x_2 + \cdots + a_{nn}x_n 
+%   \end{bmatrix}
+% \end{align*}
+% and then expanding the scalar product we obtain
+% \begin{align*}
+%   \left\langle x,y \right\rangle = x_1 y_1 + x_2 y_2 + \cdots + x_n y_n
+% \end{align*}
+% Now we can differentiate everything w.r.t. to $x$, obtaining the closed form
+% \begin{align*}
+%   \frac{\partial \left\langle x,y \right\rangle}{\partial x} = 
+%   \begin{bmatrix}
+%     \dfrac{\partial \left\langle x,y \right\rangle}{\partial x_1} \\[3ex]
+%     \dfrac{\partial \left\langle x,y \right\rangle}{\partial x_2} \\[3ex]
+%     \cdots \\[3ex]
+%     \dfrac{\partial \left\langle x,y \right\rangle}{\partial x_n} 
+%   \end{bmatrix}
+%   = 
+%   \begin{bmatrix}
+%     2 a_{11}x_1 + \displaystyle \sum_{\mathclap{j=1, j \neq 1}}^n a_{1j} x_j + \sum_{\mathclap{i=1, i \neq 1}}^n a_{i1} x_i \\[4ex]
+%     2 a_{22}x_2 + \displaystyle \sum_{\mathclap{j=1, j \neq 2}}^n a_{2j} x_j + \sum_{\mathclap{i=1, i \neq 2}}^n a_{i2} x_i \\[4ex]
+%     \cdots \\[4ex]
+%     2 a_{nn}x_n + \displaystyle \sum_{\mathclap{j=1, j \neq n}}^n a_{nj} x_j + \sum_{\mathclap{i=1, i \neq n}}^n a_{in} x_i \\
+%   \end{bmatrix}
+% \end{align*}
 
 \subsection{Derivation of primal-dual update}
-After describing the derivation of the proximal term, we can now look into the detailed derivation of the update \eqref{eqn:primal-dual-update}. Starting from the equation
+We can now look into the detailed derivation of the update \eqref{eqn:primal-dual-update}. Starting from the equation
 \[
   \lambda_{t+1} = \argmax_{\lambda \in \mathcal{X}} \{ \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{1}{t} \Psi_t(\lambda) \} 
 \]
@@ -939,16 +949,9 @@ we want to achieve the $\argmax$ over the set $\mathcal{X}$. Focusing on the max
   \frac{\partial}{\partial \lambda} \eta \left\langle \overline{g}_t,\lambda \right\rangle + \frac{\partial}{\partial \lambda} \frac{1}{t} \Psi_t(\lambda) = 0 \\
   \eta\ \overline{g}_t + \frac{1}{2t} \frac{\partial}{\partial \lambda} \left\langle \lambda,H_t \lambda \right\rangle = 0 
 \end{align*}  
-Knowing that $H_t$ is a diagonal matrix, the summation terms obtained in the derivation of $\Psi$ vanish:
+Knowing that $H_t$ is a diagonal matrix and using the previous derivation:
 \begin{align*}
-  \frac{\partial}{\partial \lambda} \left\langle \lambda, H_t \lambda \right\rangle =
-  \begin{bmatrix}
-    2 h_{11} \lambda_1 \\[2ex]
-    2 h_{22} \lambda_2 \\[2ex]
-    \cdots \\[2ex]
-    2 h_{nn} \lambda_n \\
-  \end{bmatrix}
-  = 2\, H_t\, \lambda
+  \frac{\partial}{\partial \lambda} \left\langle \lambda, H_t \lambda \right\rangle = 2\, H_t\, \lambda
 \end{align*}
 Substituting this into the above derivation, we get the maximum $\lambda$:
 \begin{align*}

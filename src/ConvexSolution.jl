@@ -1,6 +1,9 @@
 module ConvexSolution
 
-using Convex, SCS
+using Convex
+import SCS
+import ECOS
+import COSMO
 
 mutable struct ConvexSol
     n :: Int
@@ -13,6 +16,10 @@ mutable struct ConvexSol
 end
 
 function compute_solution(convex_sol)
+
+    # optimizers = [SCS.Optimizer(verbose=true), ECOS.Optimizer, COSMO.Optimizer]
+    optimizers = [ COSMO.Optimizer ]
+
     problem = minimize( quadform(convex_sol.x, convex_sol.Q) + dot(convex_sol.q, convex_sol.x) )
 
     problem.constraints += [convex_sol.A * convex_sol.x == 1]
@@ -24,22 +31,35 @@ function compute_solution(convex_sol)
 
     println(problem)
 
-    solve!(problem, () -> SCS.Optimizer(verbose=true), verbose=false)
+    results = []
 
-    println("problem status is ", problem.status) # :Optimal, :Infeasible, :Unbounded etc.
-    println("optimal value is ", problem.optval)
+    for optimizer in optimizers
 
-    println("Primal variables of problem:")
-    display(convex_sol.x)
-    print("\n")
+        # solve!(problem, () -> SCS.Optimizer(verbose=true), verbose=false)
+        solve!(problem, optimizer, verbose=false)
 
-    println("Dual variables constraints")
-    for constraint in problem.constraints
-        display(constraint.dual)
+        println("problem status is ", problem.status) # :Optimal, :Infeasible, :Unbounded etc.
+        println("optimal value is ", problem.optval)
+
+        println("Primal variables of problem:")
+        display(convex_sol.x)
         print("\n")
+
+        println("Dual variables constraints")
+        for constraint in problem.constraints
+            display(constraint.dual)
+            print("\n")
+        end
+
+        convex_sol.opt_val = problem.optval[1]
+
+        push!(results, problem.optval[1])
+
     end
 
-    convex_sol.opt_val = problem.optval[1]
+    println("Complete values")
+    display(results)
+    print("\n")
 
     return convex_sol
 end

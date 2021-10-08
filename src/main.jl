@@ -1,6 +1,5 @@
 include("./ADAGRAD_Solver.jl")
 include("./Utils.jl")
-include("./JuMPSolution.jl")
 include("./ConvexSolution.jl")
 
 using LinearAlgebra
@@ -10,8 +9,6 @@ using Colors
 using Convex
 using .Utils
 using .ADAGRAD_Solver
-# Compute the solution of JuMP.jl
-using .JuMPSolution
 using .ConvexSolution
 
 
@@ -20,22 +17,26 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
     #----------     Create problem structs     ------------#
     #------------------------------------------------------#
 
+    Iden = ones((n,1))
+
     for deflection in deflections
 
         # Create three different struct to exploit the three update rule
         solver_rule1 = ADAGRAD_Solver.Solver(
             n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-            Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+            #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+            Array{Float64}(undef, n, 1), # G_t
             Array{Float64}(undef, n, 1), # s_t
+            δ .* Iden, # H_t
             Array{Float64}(undef, n, 1), # avg_gradient
             Array{Float64}(undef, n, 1), # d_i
             deflection, # deflection
-            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_lagrangian
+            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
             0, # best_iteration
             x, # best_x
             λ, # best_λ
             Vector{Float64}(), # num_iterations
-            Vector{Float64}(), # relaxation_values
+            Vector{Float64}(), # dual_values
             Array{Float64}(undef, n, 0), # x_values
             Array{Float64}(undef, n, 0), # λ_values
             Vector{Float64}(), # λ_distances
@@ -50,17 +51,19 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
         solver_rule2 = ADAGRAD_Solver.Solver(
             n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-            Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+            #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+            Array{Float64}(undef, n, 1), # G_t
             Array{Float64}(undef, n, 1), # s_t
+            δ .* Iden, # H_t
             Array{Float64}(undef, n, 1), # avg_gradient
             Array{Float64}(undef, n, 1), # d_i
             deflection, # deflection
-            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_lagrangian
+            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
             0, # best_iteration
             x, # best_x
             λ, # best_λ
             Vector{Float64}(), # num_iterations
-            Vector{Float64}(), # relaxation_values
+            Vector{Float64}(), # dual_values
             Array{Float64}(undef, n, 0), # x_values
             Array{Float64}(undef, n, 0), # λ_values
             Vector{Float64}(), # λ_distances
@@ -75,17 +78,19 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
         solver_rule3 = ADAGRAD_Solver.Solver(
             n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-            Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+            #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+            Array{Float64}(undef, n, 1), # G_t
             Array{Float64}(undef, n, 1), # s_t
+            δ .* Iden, # H_t
             Array{Float64}(undef, n, 1), # avg_gradient
             Array{Float64}(undef, n, 1), # d_i
             deflection, # deflection
-            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_lagrangian
+            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
             0, # best_iteration
             x, # best_x
             λ, # best_λ
             Vector{Float64}(), # num_iterations
-            Vector{Float64}(), # relaxation_values
+            Vector{Float64}(), # dual_values
             Array{Float64}(undef, n, 0), # x_values
             Array{Float64}(undef, n, 0), # λ_values
             Vector{Float64}(), # λ_distances
@@ -108,10 +113,10 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
         solver_rule2 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule2)
 
-        # solver_rule3 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule3)
+        solver_rule3 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule3)
 
-        # solvers = [solver_rule1, solver_rule2, solver_rule3]
-        solvers = [solver_rule1, solver_rule2]
+        solvers = [solver_rule1, solver_rule2, solver_rule3]
+        # solvers = [solver_rule1, solver_rule2]
 
         #------------------------------------------------------#
         #-----------     Results for rule 1     ---------------#
@@ -129,13 +134,13 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
             display(sol.best_λ)
             print("\n")
 
-            println("Best value of lagrangian at iteration $(sol.best_iteration) (rule $(sol.update_formula)):")
-            display(sol.best_lagrangian)
+            println("Best value of dual function at iteration $(sol.best_iteration) (rule $(sol.update_formula)):")
+            display(sol.best_dual)
             print("\n")
 
             println("Duality gap between f( x* ) and ϕ( λ ) (rule $(sol.update_formula)):")
 
-            dual_gap = primal_optimal - sol.best_lagrangian
+            dual_gap = primal_optimal - sol.best_dual
 
             display(dual_gap)
             print("\n")
@@ -155,14 +160,13 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
             y = ones(3) 
             title = Plots.scatter(y, marker=0,markeralpha=0, annotations=(2, y[2], Plots.text("Update rule $(sol.update_formula), n=$(sol.n) and K=$(sol.K)", pointsize = 12)), axis=false, fillcolor=:white, grid=false, background_color=:white,background_color_subplot=:white, framestyle=:none, leg=false,size=(200,100),foreground_color=:white)
 
-            ticks = range( minimum(sol.relaxation_values), maximum(sol.relaxation_values), length = 5 )
+            ticks = range( minimum(sol.dual_values), maximum(sol.dual_values), length = 5 )
             ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
 
             plt = plot( sol.num_iterations, 
-                        sol.relaxation_values, 
-                        # title = "Lagrangian value update=$(solvers[i].update_formula)", 
+                        sol.dual_values, 
                         titlefontsize = 12,
-                        label = "Lagrangian", 
+                        label = "Dual", 
                         lw = 2,
                         dpi = 360,
                         linealpha = 0.5,
@@ -183,7 +187,7 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                         guidefontsize = 6,
                         formatter = :plain )
             xlabel!("Iterations")
-            ylabel!("Lagrangian value")
+            ylabel!("Dual value")
             # display(plt)
 
             ticks = range( minimum(sol.gaps), maximum(sol.gaps), length = 5 )
@@ -191,7 +195,6 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
             plt2 = plot(sol.num_iterations, 
                         sol.gaps, 
-                        # title = "Gaps update=$(solvers[i].update_formula)", 
                         titlefontsize = 12,
                         label = "Gap", 
                         lw = 2,
@@ -214,12 +217,11 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                         guidefontsize = 6,
                         formatter = :scientific )
             xlabel!("Iterations")
-            ylabel!("Gap ϕ(λ)-f(x*)")
+            ylabel!("Gap f(x*)-ϕ(λ)")
             # display(plt2)
 
             plt3 = plot(sol.num_iterations, 
                         replace!(val -> val <= 0 ? 1e-8 : val, sol.λ_distances), 
-                        # title = "Residual λ update=$(solvers[i].update_formula)", 
                         titlefontsize = 12,
                         label = "Residual λ", 
                         lw = 2, 
@@ -246,7 +248,6 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
             plt4 = plot(sol.num_iterations, 
                         sol.x_distances, 
-                        # title = "Residual x update=$(solvers[i].update_formula)", 
                         titlefontsize = 12,
                         label = "Residual x", 
                         lw = 2, 
@@ -373,17 +374,10 @@ end
 # Initialize λ iterates to ones
 λ = ones((n,1))
 
-# # Create random matrix A_help
+# Create random matrix A_help
 A_help = randn(Float64 ,n, n)
 
-# r = rank(A_help) # println("Matrix rank:") # display(r) # while r < n #     global A_help #     global r #     A_help = randn(Float64 ,n, n) #     r = rank(A_help) #     println("Matrix rank:") #     display(r) # end # Compute the inverse # A_help_inv = inv(A_help) #= Construct Q using a surely nonsingular matrix A_H using positive random eigenvalues. A random probability number is used to set an eigenvalue as 0 or not, to manage positive semidefinite or positive definite case. If prob > 0.5 ⟹ some given numbers of eigenvalues are set to 0 Else ⟹ Q is created as positive definite =# # # Eigenvalues of Q # vect = abs.(randn((n,1))) # # Random number used to set zeros # prob = abs(rand()) # if prob > 0.5 #     println("Prob greater than zero") #     # Random number of zeros to set #     global eigens = rand(1:n-1) #     # Loop over vect and modify eigenvalues #     global ind = 0 #     while eigens > 0 #         vect[end - ind] = 0.0 #         global ind #         global eigens #         ind += 1 #         eigens -= 1 #     end #     display(vect) # end # vect = vec(vect) # global Q = A_help * Diagonal(vect) * A_help_inv
-
 Q = A_help' * A_help
-
-# Garbage collector: free up some memory
-# vect = nothing
-A_help = nothing
-# A_help_inv = nothing
 
 println("Q matrix:")
 display(Q)
@@ -403,10 +397,10 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 100000
+max_iter = 50000
 
 # Initialize ε
-ε = 1e-7
+ε = 1e-8
 
 # Initialize τ
 τ = 1e-4
@@ -430,7 +424,6 @@ print("\n")
         Bunch-Kaufman ( if Q=Q^T )
         pivoted LU ( otherwise )
 =#
-# Lu factorization (unless Full_mat is symmetric)
 F = factorize(Full_mat)
 
 println("Factorization:")
@@ -438,28 +431,10 @@ display(F)
 print("\n")
 
 Full_mat = nothing
+A_help = nothing
 GC.gc()
 
-x = (F \ vcat(λ - q, ones((K,1))))[1:n]
-
-#------------------------------------------------------#
-#-----    Use JuMP.jl to compute primal solution   ----#
-#------------------------------------------------------#
-
-# jump_sol = JuMPSolution.JuMPSol(
-#     n,
-#     K,
-#     A,
-#     Q,
-#     q
-# )
-
-# jump_sol = JuMPSolution.compute_solution(jump_sol)
-
-# println("Optimal value:")
-# display(jump_sol.opt_val)
-# print("\n")
-
+# x = (F \ vcat(λ - q, ones((K,1))))[1:n]
 
 #------------------------------------------------------#
 #-----    Use Convex.jl to compute primal solution   ----#
@@ -478,24 +453,6 @@ convex_sol = ConvexSolution.compute_solution(convex_sol)
 println("Optimal value:")
 display(convex_sol.opt_val)
 print("\n")
-
-val = Utils.compute_lagrangian(Q, q, x, λ)[1]
-
-#= 
-    Check that we are not violating the lagrangian:
-    compute new random values for x and λ to start in a feasible solution
-=#
-# while (jump_sol.opt_val - val) < 10
-#     global x
-#     global λ
-#     x = randn((n,1))
-#     λ = abs.(randn((n,1)))
-#     global val 
-#     val = Utils.compute_lagrangian(Q, q, x, λ)[1]
-#     display(val)
-# end
-
-# display(val)
 
 println("Starting x:")
 display(x)

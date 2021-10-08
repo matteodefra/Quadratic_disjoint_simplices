@@ -36,10 +36,10 @@ function construct_A(K, n, I_K)
 end
 
 
-# Compute Lagrangian relaxation value
-function compute_lagrangian(Q, q, x, λ)
-    return (x' * Q * x) .+ (q' * x) .- (λ' * x)
-end
+# # Compute dual function value
+# function compute_dualvalue(Q, q, x, λ)
+#     return (x' * Q * x) .+ (q' * x) .- (λ' * x)
+# end
 
 #=
     Solve the problem of 

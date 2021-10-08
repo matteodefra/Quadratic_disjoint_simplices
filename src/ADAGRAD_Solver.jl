@@ -17,7 +17,7 @@ Create struct solver to approach the problem:
     I_K::Vector{Array{Int64}}                   Store the indexes of the corresponding simplices
     x::Array{Float64}                           Store the current value of the lagrangian primal iterates
     grads::Array{Float64}                       Keep track of the subgradient at each iteration 
-    G_t::Diagonal{Float64, Vector{Float64}}     Cumulative sum of the outer product of the gradients, keep in Diagonal way to save memory
+    G_t::Array{Float64}                         Cumulative sum of the outer product of the gradients, keep only diagonal
     s_t::Array{Float64}                         Keep track of the solution of the problem 2.4 (see report)
     avg_gradient::Array{Float64}                Keep track of the average of the subgradients
     d_i::Array{Float64}                         Keep track of the current deflected direction
@@ -29,12 +29,12 @@ Create struct solver to approach the problem:
     max_iter::Int                               Maximum number of iterations allowed
     ε::Float64                                  Tolerance on the norm of the λ iterates
     τ::Float64                                  Tolerance on the dual gap 
-    best_lagrangian::Float64                    Keep track of the best lagrangian value found
+    best_dual::Float64                          Keep track of the best dual value found
     best_iteration::Int64                       Keep track of the best iteration
     best_x::Array{Float64}                      Keep track of the best value of x found
     best_λ::Array{Float64}                      Keep track of the best value of λ found 
     num_iterations::Vector{Float64}             Store each iteration
-    relaxation_values::Vector{Float64}          Store each lagrangian evaluation 
+    dual_values::Vector{Float64}                Store each lagrangian evaluation 
     x_values::Array{Float64}                    Store every value of x
     λ_values::Array{Float64}                    Store every value of λ
     λ_distances::Array{Float64}                 Store each distance between the current λ and the previous one 
@@ -54,8 +54,9 @@ mutable struct Solver
     I_K :: Vector{Array{Int64}}
     x :: Array{Float64}
     grads :: Array{Float64}
-    G_t :: Diagonal{Float64, Vector{Float64}}
+    G_t :: Array{Float64}
     s_t :: Array{Float64}
+    H_t :: Array{Float64}
     avg_gradient :: Array{Float64}
     d_i :: Array{Float64}
     deflection :: Bool
@@ -66,12 +67,12 @@ mutable struct Solver
     max_iter :: Int
     ε :: Float64
     τ :: Float64
-    best_lagrangian :: Float64
+    best_dual :: Float64
     best_iteration :: Int64
     best_x :: Array{Float64}
     best_λ :: Array{Float64}
     num_iterations :: Vector{Float64}
-    relaxation_values :: Vector{Float64}
+    dual_values :: Vector{Float64}
     x_values :: Array{Float64}
     λ_values :: Array{Float64}
     λ_distances :: Vector{Float64}
@@ -85,13 +86,12 @@ mutable struct Solver
 end
 
 #=
-    Compute the function value of the Lagrangian relaxation given the current value of λ
-    and x
+    Compute the dual function value given the minimum x found and the value of λ
         
-        L(x,λ) = x' Q x + q' x - λ' x
+        ϕ(λ) = x' Q x + q' x - λ' x
 
 =#
-function lagrangian_relaxation(solver, previous_x, previous_λ)
+function dual_function(solver, previous_x, previous_λ)
     return (previous_x' * solver.Q * previous_x) .+ (solver.q' * previous_x) .- (previous_λ' * previous_x)
 end
 
@@ -123,29 +123,21 @@ function compute_update_rule(solver, H_t)
         # Add only the latter subgradient, since summation moves along with 
         last_subgrad = solver.grads[:, end]
 
-        # Add the latter g_t * g_t' component-wise to the matrix G_t
-        solver.G_t .+= Diagonal(last_subgrad * last_subgrad')
+        # Add the latter diagonal of g_t * g_t' component-wise to the vector G_t
+        full_prod = last_subgrad * last_subgrad'
 
-        pow = -0.5
+        solver.G_t .+= diag(full_prod)
 
-        # Create a copy for Diagonal operation and exponentiation (apply abs for possible errors with negative values)
-        G_t = abs.(solver.G_t)
+        G_t = solver.G_t 
 
-        # Apply exponentiation
-        G_t = G_t^pow
+        # Apply exponentiation and square root
+        G_t = G_t.^(-1)
+        G_t = sqrt.(G_t)
 
         # Replace all the NaN values with 0.0 to avoid NaN values in the iterates
-        replace!(G_t, NaN => 0.0)
+        # replace!(G_t, NaN => 0.0)
 
-        if solver.deflection
-            
-            λ = solver.λ + (solver.η * G_t * solver.d_i)
-        
-        else
-
-            λ = solver.λ + (solver.η * G_t * solver.grads[:,end])
-        
-        end
+        λ = solver.λ + (solver.η * G_t .* solver.grads[:,end])
 
     elseif solver.update_formula == 2
 
@@ -155,19 +147,12 @@ function compute_update_rule(solver, H_t)
         # Average the row sum of the gradient based on the current iteration in a new variable
         avg_gradient_copy = solver.avg_gradient ./ solver.iteration
 
-        λ = solver.iteration * solver.η * (- H_t^(-1) * avg_gradient_copy)
+        λ = solver.iteration * solver.η * ( ( - H_t.^(-1) ) .* avg_gradient_copy)
 
     else 
+
+        update_part = solver.η * (H_t.^(-1)) .* solver.grads[:,end]
         
-        if solver.deflection
-    
-            update_part = solver.η * H_t^(-1) * solver.d_i
-    
-        else
-
-            update_part = solver.η * H_t^(-1) * solver.grads[:,end]
-
-        end
         # Plus needed: constrain λ to be bigger, we are maximizing the dual function
         λ = solver.λ - update_part
 
@@ -197,7 +182,7 @@ function check_λ_norm(solver, current_λ, previous_λ)
     if distance <= solver.ε
         # We should exit the loop
         # Log result of the last iteration
-        @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%s \t\t%1.5e \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
+        @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%s \t\t%1.5e \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
 
         println("\nOptimal distance between λ's found:")
         display(distance)
@@ -231,11 +216,11 @@ function get_subgrad(solver)
     λ_plus = solver.λ .+ ϵ
 
     # Compute the value of a
-    a = lagrangian_relaxation(solver, solver.x, λ_minus) - lagrangian_relaxation(solver, solver.x, solver.λ)
+    a = dual_function(solver, solver.x, λ_minus) - dual_function(solver, solver.x, solver.λ)
     a = a ./ (λ_minus - solver.λ)
 
     # Compute value of b
-    b = lagrangian_relaxation(solver, solver.x, λ_plus) - lagrangian_relaxation(solver, solver.x, solver.λ)
+    b = dual_function(solver, solver.x, λ_plus) - dual_function(solver, solver.x, solver.λ)
     b = b ./ (λ_plus - solver.λ)
 
     # If norm(a-b) ≈ 0, then the gradient exist
@@ -306,7 +291,7 @@ function isincreasing(solver)
     # Check last 20 gaps 
     # latter_minimum = minimum(solver.gaps[1:end-1])
 
-    if solver.iteration - solver.best_iteration < 100#solver.gaps[end] < latter_minimum
+    if solver.iteration - solver.best_iteration < 500#solver.gaps[end] < latter_minimum
         return false
     else
         return true
@@ -321,13 +306,16 @@ end
 =#  
 function my_ADAGRAD(solver)
 
+    # To create vector b = [λ_{t-1} - q, b]
+    o = ones((solver.K,1))
+
     # Log result of each iteration
     print("Iteration\tTime\t\tL value\t\tx_norm\t\tλ_norm\t\tcurrent gap\n\n")
 
     # Prepare a dataframe to store the values
     df = DataFrame( Iteration = Int[],
                     Time = Float64[],
-                    LagrangianValue = Float64[],
+                    DualValue = Float64[],
                     x_norm_residual = Float64[],
                     λ_norm_residual = Any[],
                     Dual_gap = Any[] )
@@ -335,18 +323,18 @@ function my_ADAGRAD(solver)
     # Set the first optimal values
     solver.iteration = 0
 
-    L_val = lagrangian_relaxation(solver, solver.x, solver.λ)[1]
+    ϕ_λ = dual_function(solver, solver.x, solver.λ)[1]
 
-    current_gap = solver.Off_the_shelf_primal - L_val
+    current_gap = solver.Off_the_shelf_primal - ϕ_λ
 
-    if current_gap > 0 && L_val > solver.best_lagrangian
-        solver.best_lagrangian = L_val
+    if current_gap > 0 && ϕ_λ > solver.best_dual
+        solver.best_dual = ϕ_λ
         solver.best_iteration = 0
         solver.best_x = solver.x
         solver.best_λ = solver.λ
     end
 
-    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration 0.00000000 L_val norm(solver.x) norm(solver.λ) current_gap
+    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" solver.iteration 0.00000000 ϕ_λ norm(solver.x) norm(solver.λ) current_gap
 
     while solver.iteration < solver.max_iter
 
@@ -360,7 +348,7 @@ function my_ADAGRAD(solver)
         push!(solver.num_iterations, solver.iteration)
 
         # Modify η in DSS way
-        solver.η = 1 / sqrt(solver.iteration)
+        solver.η = 1 / (solver.iteration)
 
         # Assign previous_λ
         previous_λ = solver.λ
@@ -399,30 +387,20 @@ function my_ADAGRAD(solver)
         # solver.grads = [solver.grads subgrad]
         solver.deflection ? solver.grads = [solver.grads solver.d_i] : solver.grads = [solver.grads subgrad]
         
-        # Solution of lagrangian_relaxation of problem 2.4 (see report)
+        # Solution of dual_function of problem 2.4 (see report)
         # Accumulate the squared summation into solver.s_t structure
         solver.deflection ? solver.s_t .+= (solver.d_i.^2) : solver.s_t .+= (subgrad.^2)
 
         # Create a copy of solver.s_t (avoid modifying the original one)
         s_t = solver.s_t 
 
-        # Vectorize s_t applying the √ to each element
-        s_t = vec(sqrt.(abs.(s_t)))
-
-        # Create diagonal matrix H_t
-        # Create diagonal matrix starting from s_t 
-        mat = Diagonal(s_t)
-
-        # Construct Identity matrix
-        Iden = Diagonal(ones(solver.n,solver.n))
-
-        δ_Id = solver.δ .* Iden
+        # Compute s_t
+        s_t = norm.(s_t)
 
         # Sum them (hessian approximation)
-        H_t = δ_Id + mat
-       
-        # Create vector b = [λ_{t-1} - q, b]
-        o = ones((solver.K,1))
+        H_t = solver.H_t
+
+        H_t += s_t
 
         diff = solver.λ - solver.q
 
@@ -443,15 +421,15 @@ function my_ADAGRAD(solver)
         solver.λ = compute_update_rule(solver, H_t)
         
         # Compute Lagrangian function value
-        L_val = lagrangian_relaxation(solver, solver.x, solver.λ)
+        ϕ_λ = dual_function(solver, solver.x, solver.λ)[1]
 
-        if isnan( L_val[1] ) || any( isnan, solver.x ) || any( isnan, solver.λ )
+        if isnan( ϕ_λ ) || any( isnan, solver.x ) || any( isnan, solver.λ )
             println("Some NaN values detected")
             break
         end
 
         # Storing current relaxation value
-        push!(solver.relaxation_values, L_val[1])
+        push!(solver.dual_values, ϕ_λ)
 
         # Storing x_{solver.iteration}
         solver.x_values = [solver.x_values solver.x]
@@ -472,15 +450,15 @@ function my_ADAGRAD(solver)
         push!(solver.timings, time_step)
 
         # Compute current dual_gap
-        current_gap = solver.Off_the_shelf_primal - solver.relaxation_values[end]
+        current_gap = solver.Off_the_shelf_primal - solver.dual_values[end]
 
         if isnan( current_gap )
             println("Some NaN values detected")
             break
         end
 
-        if L_val[1] > solver.best_lagrangian && current_gap > 0
-            solver.best_lagrangian = L_val[1]
+        if ϕ_λ > solver.best_dual && current_gap > 0
+            solver.best_dual = ϕ_λ
             solver.best_iteration = solver.iteration
             solver.best_x = solver.x
             solver.best_λ = solver.λ
@@ -491,17 +469,17 @@ function my_ADAGRAD(solver)
 
         if check_λ_norm(solver, solver.λ, previous_λ)
             # Add last row
-            push!(df, [ solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
-            # break
+            push!(df, [ solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
+            break
         end
 
-        if solver.iteration % 2500 == 0
+        if solver.iteration % 2000 == 0
 
             if isincreasing(solver)
                 println("Gap is increasing")
                 # Log result of the current iteration
-                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "INCREASING"
-                push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "INCREASING" ])
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] "INCREASING"
+                push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], "INCREASING" ])
                 break
             end
         
@@ -510,20 +488,24 @@ function my_ADAGRAD(solver)
         if current_gap > 0 && current_gap <= solver.τ
             println("Found optimal dual gap")
             # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
-            push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
+            push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
             break   
         end
 
         if (solver.iteration == 1) || (solver.iteration % 10 == 0)
             # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" solver.iteration solver.timings[end] solver.relaxation_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
         end
 
         # Add to DataFrame to save results
-        push!(df, [solver.iteration, solver.timings[end], solver.relaxation_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
+        push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
 
     end
+
+    println("Last x:")
+    display(solver.x)
+    print("\n")
 
     GC.gc()
 

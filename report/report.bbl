@@ -1,4 +1,4 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{10}
 
 \bibitem{JMLR:v12:duchi11a}
 John Duchi, Elad Hazan, and Yoram Singer.
@@ -47,5 +47,17 @@ Ang Andersen.
 Iain Dunning, Joey Huchette, and Miles Lubin.
 \newblock Jump: A modeling language for mathematical optimization.
 \newblock {\em SIAM Review}, 59(2):295--320, 2017.
+
+\bibitem{ocpb:16}
+Brendan O'Donoghue, Eric Chu, Neal Parikh, and Stephen Boyd.
+\newblock Conic optimization via operator splitting and homogeneous self-dual
+  embedding.
+\newblock {\em Journal of Optimization Theory and Applications},
+  169(3):1042--1068, June 2016.
+
+\bibitem{Garstka_2021}
+Michael Garstka, Mark Cannon, and Paul Goulart.
+\newblock {COSMO}: A conic operator splitting method for convex conic problems.
+\newblock {\em Journal of Optimization Theory and Applications}, 2021.
 
 \end{thebibliography}

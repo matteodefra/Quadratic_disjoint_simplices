@@ -101,37 +101,37 @@ print(f"Update 3 deflection true: {update3_deftrue['Time'].sum()}\n")
 
 print("\n\n")
 
-print("Best dual gap and Lagrangian value:\n")
+print("Best dual gap and dual value:\n")
 
 min_index = update1_deffalse[['Dual_gap']].idxmin()
 
 print(f"Update 1 deflection false, best dual gap: {update1_deffalse.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 1 deflection false, best dual value: {update1_deffalse.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 1 deflection false, best dual value: {update1_deffalse.loc[min_index, 'DualValue']}\n")
 
 min_index = update1_deftrue[['Dual_gap']].idxmin()
 
 print(f"Update 1 deflection true, best dual gap: {update1_deftrue.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 1 deflection true, best dual value: {update1_deftrue.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 1 deflection true, best dual value: {update1_deftrue.loc[min_index, 'DualValue']}\n")
 
 min_index = update2_deffalse[['Dual_gap']].idxmin()
 
 print(f"Update 2 deflection false, best dual gap: {update2_deffalse.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 2 deflection false, best dual value: {update2_deffalse.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 2 deflection false, best dual value: {update2_deffalse.loc[min_index, 'DualValue']}\n")
 
 min_index = update2_deftrue[['Dual_gap']].idxmin()
 
 print(f"Update 2 deflection true, best dual gap: {update2_deftrue.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 2 deflection true, best dual value: {update2_deftrue.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 2 deflection true, best dual value: {update2_deftrue.loc[min_index, 'DualValue']}\n")
 
 min_index = update3_deffalse[['Dual_gap']].idxmin()
 
 print(f"Update 3 deflection false, best dual gap: {update3_deffalse.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 3 deflection false, best dual value: {update3_deffalse.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 3 deflection false, best dual value: {update3_deffalse.loc[min_index, 'DualValue']}\n")
 
 min_index = update3_deftrue[['Dual_gap']].idxmin()
 
 print(f"Update 3 deflection true, best dual gap: {update3_deftrue.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 3 deflection true, best dual value: {update3_deftrue.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 3 deflection true, best dual value: {update3_deftrue.loc[min_index, 'DualValue']}\n")
 
 print("\n\n")
 
@@ -158,36 +158,36 @@ print(f"Update 3 deflection true: {psd_update3_deftrue['Time'].sum()}\n")
 
 print("\n\n")
 
-print("Best dual gap and Lagrangian value:\n")
+print("Best dual gap and dual value:\n")
 
 min_index = psd_update1_deffalse[['Dual_gap']].idxmin()
 
 print(f"Update 1 deflection false, best dual gap: {psd_update1_deffalse.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 1 deflection false, best dual value: {psd_update1_deffalse.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 1 deflection false, best dual value: {psd_update1_deffalse.loc[min_index, 'DualValue']}\n")
 
 min_index = psd_update1_deftrue[['Dual_gap']].idxmin()
 
 print(f"Update 1 deflection true, best dual gap: {psd_update1_deftrue.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 1 deflection true, best dual value: {psd_update1_deftrue.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 1 deflection true, best dual value: {psd_update1_deftrue.loc[min_index, 'DualValue']}\n")
 
 min_index = psd_update2_deffalse[['Dual_gap']].idxmin()
 
 print(f"Update 2 deflection false, best dual gap: {psd_update2_deffalse.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 2 deflection false, best dual value: {psd_update2_deffalse.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 2 deflection false, best dual value: {psd_update2_deffalse.loc[min_index, 'DualValue']}\n")
 
 min_index = psd_update2_deftrue[['Dual_gap']].idxmin()
 
 print(f"Update 2 deflection true, best dual gap: {psd_update2_deftrue.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 2 deflection true, best dual value: {psd_update2_deftrue.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 2 deflection true, best dual value: {psd_update2_deftrue.loc[min_index, 'DualValue']}\n")
 
 min_index = psd_update3_deffalse[['Dual_gap']].idxmin()
 
 print(f"Update 3 deflection false, best dual gap: {psd_update3_deffalse.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 3 deflection false, best dual value: {psd_update3_deffalse.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 3 deflection false, best dual value: {psd_update3_deffalse.loc[min_index, 'DualValue']}\n")
 
 min_index = psd_update3_deftrue[['Dual_gap']].idxmin()
 
 print(f"Update 3 deflection true, best dual gap: {psd_update3_deftrue.loc[min_index, 'Dual_gap']}\n")
-print(f"Update 3 deflection true, best dual value: {psd_update3_deftrue.loc[min_index, 'LagrangianValue']}\n")
+print(f"Update 3 deflection true, best dual value: {psd_update3_deftrue.loc[min_index, 'DualValue']}\n")
 
 print("\n\n")

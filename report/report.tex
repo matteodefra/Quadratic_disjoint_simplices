@@ -478,6 +478,25 @@ From this we understand that having a zero duality gap implies optimality of the
   f(x^*) - \psi(\lambda_i) \le \tau  
 \] 
 for each $\lambda_i$ computed during iterations.\\
+The starting value of the iterates $x$ are set to a starting feasible solution, obtained with the following computation:
+
+\begin{algorithm}[H]
+  \caption{Feasible x}
+  \label{alg:feasible-x}
+  \begin{algorithmic}
+    \Procedure{Get\_$x$}{$\left[I^k\right]$}
+      \State $x \gets zeros(n,1)$
+      \ForEach{$set \in I^k$}
+        \State $len = length(set)$
+        \ForEach{$val \in set$}
+          \State $x[val] = 1 / len$
+        \EndFor
+      \EndFor
+    \EndProcedure
+  \end{algorithmic}  
+\end{algorithm}
+
+and for the $\lambda$'s to a vector of ones.\\
 Lastly, an optional parameter is given as input to the algorithm. The parameter $defl$ is a boolean value indicating the use of deflection or not, whose derivation is described in the Appendix \ref{sec:appendix_C}.\\
 Putting everything together, we obtain a slightly different algorithm than \ref{alg:adagrad}:
 
@@ -558,25 +577,6 @@ In order to test the program on different problem dimensions, we have chosen dif
 Note that in each execution also the value of $defl$ was set to true.\\
 The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled, all modules are loaded and the needed memory is computed, 
 then the next executions are much much faster. We suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=1$ or $2$) and ignore the results, and then start the experiments with whatever value you choose.\\
-The starting value of the iterates $x$ are set to a starting feasible solution, obtained with the following computation:
-
-\begin{algorithm}[H]
-  \caption{Feasible x}
-  \label{alg:feasible-x}
-  \begin{algorithmic}
-    \Procedure{Get\_$x$}{$\left[I^k\right]$}
-      \State $x \gets zeros(n,1)$
-      \ForEach{$set \in I^k$}
-        \State $len = length(set)$
-        \ForEach{$val \in set$}
-          \State $x[val] = 1 / len$
-        \EndFor
-      \EndFor
-    \EndProcedure
-  \end{algorithmic}  
-\end{algorithm}
-
-and for the $\lambda$'s to a vector of ones.\\
 The matrix $Q$ is the resulting covariance matrix of a random generated matrix $A_h$, in formula: 
 \[
   Q = A_h^T * A_h  

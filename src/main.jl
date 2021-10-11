@@ -397,7 +397,7 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 50000
+max_iter = 20000
 
 # Initialize ε
 ε = 1e-8
@@ -461,6 +461,7 @@ print("\n")
 println("Starting λs:")
 display(λ)
 print("\n")
+
 
 testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, 
         max_iter, ε, τ, F, A, convex_sol.opt_val)

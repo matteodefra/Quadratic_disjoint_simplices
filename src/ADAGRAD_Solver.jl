@@ -115,7 +115,6 @@ end
         λ_t = λ_{t-1} - η H_{t-1}^{-1} g_t
 
 =#
-# PROVARE CON -
 function compute_update_rule(solver, H_t)
     
     if solver.update_formula == 1
@@ -124,18 +123,18 @@ function compute_update_rule(solver, H_t)
         last_subgrad = solver.grads[:, end]
 
         # Add the latter diagonal of g_t * g_t' component-wise to the vector G_t
-        full_prod = last_subgrad * last_subgrad'
+        full_prod = last_subgrad .* last_subgrad
 
-        solver.G_t .+= diag(full_prod)
+        solver.G_t .+= full_prod
 
         G_t = solver.G_t 
 
-        # Apply exponentiation and square root
-        G_t = G_t.^(-1)
-        G_t = sqrt.(G_t)
-
         # Replace all the NaN values with 0.0 to avoid NaN values in the iterates
-        # replace!(G_t, NaN => 0.0)
+        replace!(x -> x < 0 ? abs(x) : x, G_t)
+
+        # Apply exponentiation and square root
+        G_t = 1 ./ G_t
+        G_t = sqrt.(G_t)
 
         λ = solver.λ + (solver.η * G_t .* solver.grads[:,end])
 
@@ -238,9 +237,13 @@ function get_subgrad(solver)
     max_norm = max(a_norm, b_norm)
 
     if max_norm == a_norm
+
         return a
+
     else 
+
         return b
+
     end
 
 end
@@ -456,6 +459,11 @@ function my_ADAGRAD(solver)
             println("Some NaN values detected")
             break
         end
+
+        if current_gap < 0
+            println("Gap is negative")
+            solver.λ .+= 1e-1
+        end 
 
         if ϕ_λ > solver.best_dual && current_gap > 0
             solver.best_dual = ϕ_λ

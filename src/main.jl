@@ -12,7 +12,7 @@ using .ADAGRAD_Solver
 using .ConvexSolution
 
 
-function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, F, A, primal_optimal)
+function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
     #------------------------------------------------------#
     #----------     Create problem structs     ------------#
     #------------------------------------------------------#
@@ -21,277 +21,296 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
     for deflection in deflections
 
-        # Create three different struct to exploit the three update rule
-        solver_rule1 = ADAGRAD_Solver.Solver(
-            n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-            #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-            Array{Float64}(undef, n, 1), # G_t
-            Array{Float64}(undef, n, 1), # s_t
-            δ .* Iden, # H_t
-            Array{Float64}(undef, n, 1), # avg_gradient
-            Array{Float64}(undef, n, 1), # d_i
-            deflection, # deflection
-            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-            0, # best_iteration
-            x, # best_x
-            λ, # best_λ
-            Vector{Float64}(), # num_iterations
-            Vector{Float64}(), # dual_values
-            Array{Float64}(undef, n, 0), # x_values
-            Array{Float64}(undef, n, 0), # λ_values
-            Vector{Float64}(), # λ_distances
-            Vector{Float64}(), # x_distances
-            Vector{Float64}(), # timings
-            Vector{Float64}(), # gaps
-            1, # update_rule
-            F, # Best factorization
-            A, # Constraint matrix
-            primal_optimal # Primal optimal value
-        )
+        for stepsize in stepsizes
 
-        solver_rule2 = ADAGRAD_Solver.Solver(
-            n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-            #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-            Array{Float64}(undef, n, 1), # G_t
-            Array{Float64}(undef, n, 1), # s_t
-            δ .* Iden, # H_t
-            Array{Float64}(undef, n, 1), # avg_gradient
-            Array{Float64}(undef, n, 1), # d_i
-            deflection, # deflection
-            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-            0, # best_iteration
-            x, # best_x
-            λ, # best_λ
-            Vector{Float64}(), # num_iterations
-            Vector{Float64}(), # dual_values
-            Array{Float64}(undef, n, 0), # x_values
-            Array{Float64}(undef, n, 0), # λ_values
-            Vector{Float64}(), # λ_distances
-            Vector{Float64}(), # x_distances
-            Vector{Float64}(), # timings
-            Vector{Float64}(), # gaps
-            2, # update_rule
-            F, # Best factorization
-            A, # Constraint matrix
-            primal_optimal # Primal optimal value
-        )
-
-        solver_rule3 = ADAGRAD_Solver.Solver(
-            n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-            #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-            Array{Float64}(undef, n, 1), # G_t
-            Array{Float64}(undef, n, 1), # s_t
-            δ .* Iden, # H_t
-            Array{Float64}(undef, n, 1), # avg_gradient
-            Array{Float64}(undef, n, 1), # d_i
-            deflection, # deflection
-            Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-            0, # best_iteration
-            x, # best_x
-            λ, # best_λ
-            Vector{Float64}(), # num_iterations
-            Vector{Float64}(), # dual_values
-            Array{Float64}(undef, n, 0), # x_values
-            Array{Float64}(undef, n, 0), # λ_values
-            Vector{Float64}(), # λ_distances
-            Vector{Float64}(), # x_distance
-            Vector{Float64}(), # timings
-            Vector{Float64}(), # gaps
-            3, # update_rule
-            F, # Best factorization
-            A, # Constraint matrix
-            primal_optimal # Primal optimal value
-        )
-
-        #------------------------------------------------------#
-        #--------     Calculate custom solution     -----------#
-        #------------------------------------------------------#
-
-
-        # Now calculate the results of ADAGRAD in the three different fashion way
-        solver_rule1 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule1)
-
-        solver_rule2 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule2)
-
-        solver_rule3 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule3)
-
-        solvers = [solver_rule1, solver_rule2, solver_rule3]
-        # solvers = [solver_rule1, solver_rule2]
-
-        #------------------------------------------------------#
-        #-----------     Results for rule 1     ---------------#
-        #------------------------------------------------------#
-
-        for sol in solvers
-            print("\n\n\n\n")
-            print("------------------- Rule $(sol.update_formula) results -------------------\n\n")
-
-            println("Optimal x found (rule $(sol.update_formula)):")
-            display(sol.best_x)
-            print("\n")
-
-            println("Optimal λ found (rule $(sol.update_formula)):")
-            display(sol.best_λ)
-            print("\n")
-
-            println("Best value of dual function at iteration $(sol.best_iteration) (rule $(sol.update_formula)):")
-            display(sol.best_dual)
-            print("\n")
-
-            println("Duality gap between f( x* ) and ϕ( λ ) (rule $(sol.update_formula)):")
-
-            dual_gap = primal_optimal - sol.best_dual
-
-            display(dual_gap)
-            print("\n")
-
-        end
-
-        #------------------------------------------------------#
-        #-----------     Plotting utilities     ---------------#
-        #------------------------------------------------------#
-
-        # Plots.theme(:bright)
-
-        gr()
-
-        for sol in solvers
-
-            y = ones(3) 
-            title = Plots.scatter(y, marker=0,markeralpha=0, annotations=(2, y[2], Plots.text("Update rule $(sol.update_formula), n=$(sol.n) and K=$(sol.K)", pointsize = 12)), axis=false, fillcolor=:white, grid=false, background_color=:white,background_color_subplot=:white, framestyle=:none, leg=false,size=(200,100),foreground_color=:white)
-
-            ticks = range( minimum(sol.dual_values), maximum(sol.dual_values), length = 5 )
-            ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
-
-            plt = plot( sol.num_iterations, 
-                        sol.dual_values, 
-                        titlefontsize = 12,
-                        label = "Dual", 
-                        lw = 2,
-                        dpi = 360,
-                        linealpha = 0.5,
-                        linecolor = :green,
-                        bg_inside = :whitesmoke,
-                        minorgrid = true,
-                        minorgridalpha = 1,
-                        foreground_color_grid = :white,
-                        foreground_color_minor_grid = :white,
-                        gridlinewidth = 1,
-                        tickdirection = :out,
-                        xscale = :log10,
-                        minorticks = 5,
-                        showaxis = :hide,
-                        legend = :bottomright,
-                        isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
-                        tickfontsize = 4,
-                        guidefontsize = 6,
-                        formatter = :plain )
-            xlabel!("Iterations")
-            ylabel!("Dual value")
-            # display(plt)
-
-            ticks = range( minimum(sol.gaps), maximum(sol.gaps), length = 5 )
-            ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
-
-            plt2 = plot(sol.num_iterations, 
-                        sol.gaps, 
-                        titlefontsize = 12,
-                        label = "Gap", 
-                        lw = 2,
-                        dpi = 360,
-                        xscale = :log10,
-                        # yscale = :log10,
-                        linealpha = 0.5,
-                        linecolor = :green,
-                        bg_inside = :whitesmoke,
-                        minorgrid = true,
-                        minorgridalpha = 1,
-                        foreground_color_grid = :white,
-                        foreground_color_minor_grid = :white,
-                        gridlinewidth = 1,
-                        tickdirection = :out,
-                        minorticks = 5,
-                        showaxis = :hide,
-                        isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
-                        tickfontsize = 4,
-                        guidefontsize = 6,
-                        formatter = :scientific )
-            xlabel!("Iterations")
-            ylabel!("Gap f(x*)-ϕ(λ)")
-            # display(plt2)
-
-            plt3 = plot(sol.num_iterations, 
-                        replace!(val -> val <= 0 ? 1e-8 : val, sol.λ_distances), 
-                        titlefontsize = 12,
-                        label = "Residual λ", 
-                        lw = 2, 
-                        dpi = 360,
-                        xscale = :log10,
-                        yscale = :log10,
-                        linealpha = 0.5,
-                        linecolor = :green,
-                        bg_inside = :whitesmoke,
-                        minorgrid = true,
-                        minorgridalpha = 1,
-                        foreground_color_grid = :white,
-                        foreground_color_minor_grid = :white,
-                        gridlinewidth = 1,
-                        tickdirection = :out,
-                        minorticks = 5,
-                        showaxis = :hide,
-                        tickfontsize = 4,
-                        guidefontsize = 6,
-                        formatter = :plain )
-            xlabel!("Iterations")
-            ylabel!("Residual λ")
-            # display(plt3)
-
-            plt4 = plot(sol.num_iterations, 
-                        sol.x_distances, 
-                        titlefontsize = 12,
-                        label = "Residual x", 
-                        lw = 2, 
-                        dpi = 360,
-                        xscale = :log10,
-                        yscale = :log10,
-                        linealpha = 0.5,
-                        linecolor = :green,
-                        bg_inside = :whitesmoke,
-                        minorgrid = true,
-                        minorgridalpha = 1,
-                        foreground_color_grid = :white,
-                        foreground_color_minor_grid = :white,
-                        gridlinewidth = 1,
-                        tickdirection = :out,
-                        minorticks = 5,
-                        showaxis = :hide,
-                        tickfontsize = 4,
-                        guidefontsize = 6,
-                        formatter = :plain )
-            xlabel!("Iterations")
-            ylabel!("Residual x")
-            # display(plt4)
-
-            # savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection)_gap=$(round(gaps["Rule $i"], digits=2)).png")
-            # savefig(plt2, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-            # savefig(plt3, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-            # savefig(plt4, "plots/Residual_x_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-            
-            # total_plot = plot(plt, plt2, plt3, plt4, 
-            #                 layout = @layout([a b; c d]), 
-            #                 title = "Update $(solvers[i].update_formula)",
-            #                 dpi = 360)
-            
-            # savefig(total_plot, "plots/Subplot=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
-            
-
-            # combine the 'title' plot with your real plots
-            total_plot = Plots.plot(
-                title,
-                Plots.plot(plt, plt2, plt3, plt4, layout = 4),
-                layout=grid(2,1,heights=[0.05,0.95])
+            # Create three different struct to exploit the three update rule
+            solver_rule1 = ADAGRAD_Solver.Solver(
+                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+                Array{Float64}(undef, n, 1), # G_t
+                Array{Float64}(undef, n, 1), # s_t
+                δ .* Iden, # H_t
+                Array{Float64}(undef, n, 1), # avg_gradient
+                Array{Float64}(undef, n, 1), # d_i
+                deflection, # deflection
+                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
+                0, # best_iteration
+                x, # best_x
+                λ, # best_λ
+                Vector{Float64}(), # num_iterations
+                Vector{Float64}(), # dual_values
+                Array{Float64}(undef, n, 0), # x_values
+                Array{Float64}(undef, n, 0), # λ_values
+                Vector{Float64}(), # λ_distances
+                Vector{Float64}(), # x_distances
+                Vector{Float64}(), # timings
+                Vector{Float64}(), # gaps
+                1, # update_rule
+                stepsize, # stepsize_choice
+                F, # Best factorization
+                A, # Constraint matrix
+                primal_optimal # Primal optimal value
             )
-            savefig(total_plot, "plots/Rule=$(sol.update_formula)_n=$(sol.n)_K=$(sol.K)_defl=$(sol.deflection).png")
+
+            solver_rule2 = ADAGRAD_Solver.Solver(
+                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+                Array{Float64}(undef, n, 1), # G_t
+                Array{Float64}(undef, n, 1), # s_t
+                δ .* Iden, # H_t
+                Array{Float64}(undef, n, 1), # avg_gradient
+                Array{Float64}(undef, n, 1), # d_i
+                deflection, # deflection
+                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
+                0, # best_iteration
+                x, # best_x
+                λ, # best_λ
+                Vector{Float64}(), # num_iterations
+                Vector{Float64}(), # dual_values
+                Array{Float64}(undef, n, 0), # x_values
+                Array{Float64}(undef, n, 0), # λ_values
+                Vector{Float64}(), # λ_distances
+                Vector{Float64}(), # x_distances
+                Vector{Float64}(), # timings
+                Vector{Float64}(), # gaps
+                2, # update_rule
+                stepsize, # stepsize_choice
+                F, # Best factorization
+                A, # Constraint matrix
+                primal_optimal # Primal optimal value
+            )
+
+            solver_rule3 = ADAGRAD_Solver.Solver(
+                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+                Array{Float64}(undef, n, 1), # G_t
+                Array{Float64}(undef, n, 1), # s_t
+                δ .* Iden, # H_t
+                Array{Float64}(undef, n, 1), # avg_gradient
+                Array{Float64}(undef, n, 1), # d_i
+                deflection, # deflection
+                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
+                0, # best_iteration
+                x, # best_x
+                λ, # best_λ
+                Vector{Float64}(), # num_iterations
+                Vector{Float64}(), # dual_values
+                Array{Float64}(undef, n, 0), # x_values
+                Array{Float64}(undef, n, 0), # λ_values
+                Vector{Float64}(), # λ_distances
+                Vector{Float64}(), # x_distance
+                Vector{Float64}(), # timings
+                Vector{Float64}(), # gaps
+                3, # update_rule
+                stepsize, # stepsize_choice
+                F, # Best factorization
+                A, # Constraint matrix
+                primal_optimal # Primal optimal value
+            )
+
+            #------------------------------------------------------#
+            #--------     Calculate custom solution     -----------#
+            #------------------------------------------------------#
+
+
+            # Now calculate the results of ADAGRAD in the three different fashion way
+            solver_rule1 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule1)
+
+            solver_rule2 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule2)
+
+            solver_rule3 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule3)
+
+            solvers = [solver_rule1, solver_rule2, solver_rule3]
+            # solvers = [solver_rule1, solver_rule2]
+
+            #------------------------------------------------------#
+            #-----------     Results for rule 1     ---------------#
+            #------------------------------------------------------#
+
+            for sol in solvers
+                print("\n\n\n\n")
+                print("------------------- Rule $(sol.update_formula) results -------------------\n\n")
+
+                println("Optimal x found (rule $(sol.update_formula)):")
+                display(sol.best_x)
+                print("\n")
+
+                println("Optimal λ found (rule $(sol.update_formula)):")
+                display(sol.best_λ)
+                print("\n")
+
+                println("Best value of dual function at iteration $(sol.best_iteration) (rule $(sol.update_formula)):")
+                display(sol.best_dual)
+                print("\n")
+
+                println("Duality gap between f( x* ) and ϕ( λ ) (rule $(sol.update_formula)):")
+
+                dual_gap = primal_optimal - sol.best_dual
+
+                display(dual_gap)
+                print("\n")
+
+            end
+
+            #------------------------------------------------------#
+            #-----------     Plotting utilities     ---------------#
+            #------------------------------------------------------#
+
+            # Plots.theme(:bright)
+
+            gr()
+
+            for sol in solvers
+
+                y = ones(3) 
+                title = Plots.scatter(y, marker=0,markeralpha=0, annotations=(2, y[2], Plots.text("Update rule $(sol.update_formula), n=$(sol.n) and K=$(sol.K)", pointsize = 12)), axis=false, fillcolor=:white, grid=false, background_color=:white,background_color_subplot=:white, framestyle=:none, leg=false,size=(200,100),foreground_color=:white)
+
+                ticks = []
+                ticks_string = []
+
+                if ( !isempty(sol.dual_values) )
+                    ticks = range( minimum(sol.dual_values), maximum(sol.dual_values), length = 5 )
+                    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+                end
+
+                plt = plot( sol.num_iterations, 
+                            sol.dual_values, 
+                            titlefontsize = 12,
+                            label = "Dual", 
+                            lw = 2,
+                            dpi = 360,
+                            linealpha = 0.5,
+                            linecolor = :green,
+                            bg_inside = :whitesmoke,
+                            minorgrid = true,
+                            minorgridalpha = 1,
+                            foreground_color_grid = :white,
+                            foreground_color_minor_grid = :white,
+                            gridlinewidth = 1,
+                            tickdirection = :out,
+                            xscale = :log10,
+                            minorticks = 5,
+                            showaxis = :hide,
+                            legend = :bottomright,
+                            isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
+                            tickfontsize = 4,
+                            guidefontsize = 6,
+                            formatter = :plain )
+                xlabel!("Iterations")
+                ylabel!("Dual value")
+                # display(plt)
+
+
+                ticks = []
+                ticks_string = []
+
+                if ( !isempty(sol.gaps) )
+                    ticks = range( minimum(sol.gaps), maximum(sol.gaps), length = 5 )
+                    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+                end
+
+                    
+                plt2 = plot(sol.num_iterations, 
+                            sol.gaps, 
+                            titlefontsize = 12,
+                            label = "Gap", 
+                            lw = 2,
+                            dpi = 360,
+                            xscale = :log10,
+                            # yscale = :log10,
+                            linealpha = 0.5,
+                            linecolor = :green,
+                            bg_inside = :whitesmoke,
+                            minorgrid = true,
+                            minorgridalpha = 1,
+                            foreground_color_grid = :white,
+                            foreground_color_minor_grid = :white,
+                            gridlinewidth = 1,
+                            tickdirection = :out,
+                            minorticks = 5,
+                            showaxis = :hide,
+                            isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
+                            tickfontsize = 4,
+                            guidefontsize = 6,
+                            formatter = :scientific )
+                xlabel!("Iterations")
+                ylabel!("Gap f(x*)-ϕ(λ)")
+                # display(plt2)
+
+                plt3 = plot(sol.num_iterations, 
+                            replace!(val -> val <= 0 ? 1e-8 : val, sol.λ_distances), 
+                            titlefontsize = 12,
+                            label = "Residual λ", 
+                            lw = 2, 
+                            dpi = 360,
+                            xscale = :log10,
+                            yscale = :log10,
+                            linealpha = 0.5,
+                            linecolor = :green,
+                            bg_inside = :whitesmoke,
+                            minorgrid = true,
+                            minorgridalpha = 1,
+                            foreground_color_grid = :white,
+                            foreground_color_minor_grid = :white,
+                            gridlinewidth = 1,
+                            tickdirection = :out,
+                            minorticks = 5,
+                            showaxis = :hide,
+                            tickfontsize = 4,
+                            guidefontsize = 6,
+                            formatter = :plain )
+                xlabel!("Iterations")
+                ylabel!("Residual λ")
+                # display(plt3)
+
+                plt4 = plot(sol.num_iterations, 
+                            sol.x_distances, 
+                            titlefontsize = 12,
+                            label = "Residual x", 
+                            lw = 2, 
+                            dpi = 360,
+                            xscale = :log10,
+                            yscale = :log10,
+                            linealpha = 0.5,
+                            linecolor = :green,
+                            bg_inside = :whitesmoke,
+                            minorgrid = true,
+                            minorgridalpha = 1,
+                            foreground_color_grid = :white,
+                            foreground_color_minor_grid = :white,
+                            gridlinewidth = 1,
+                            tickdirection = :out,
+                            minorticks = 5,
+                            showaxis = :hide,
+                            tickfontsize = 4,
+                            guidefontsize = 6,
+                            formatter = :plain )
+                xlabel!("Iterations")
+                ylabel!("Residual x")
+                # display(plt4)
+
+                # savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection)_gap=$(round(gaps["Rule $i"], digits=2)).png")
+                # savefig(plt2, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
+                # savefig(plt3, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
+                # savefig(plt4, "plots/Residual_x_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
+                
+                # total_plot = plot(plt, plt2, plt3, plt4, 
+                #                 layout = @layout([a b; c d]), 
+                #                 title = "Update $(solvers[i].update_formula)",
+                #                 dpi = 360)
+                
+                # savefig(total_plot, "plots/Subplot=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
+                
+
+                # combine the 'title' plot with your real plots
+                total_plot = Plots.plot(
+                    title,
+                    Plots.plot(plt, plt2, plt3, plt4, layout = 4),
+                    layout=grid(2,1,heights=[0.05,0.95])
+                )
+                savefig(total_plot, "plots/Rule=$(sol.update_formula)_n=$(sol.n)_K=$(sol.K)_defl=$(sol.deflection)_step=$(sol.stepsize_choice).png")
+
+            end
 
         end
 
@@ -316,6 +335,16 @@ K = parse(Int64, K)
 print("Deflection?[y/n] ")
 deflections = readline()
 deflections = deflections == "y" ? [true, false] : [false]
+
+print("Use different stepsize choices?[y/n] ")
+stepsizes = readline()
+#=
+    0: Constant step size                   η = h               with h > 0
+    1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
+    2: Square summable but not summable     η = α / (b + t)     with α > 0 and b ≥ 0
+    3: Nonsummable diminishing              η = α / √t          with α > 0 
+=#
+stepsizes = stepsizes == "y" ? [0, 1, 2, 3] : [2]
 
 println("Initializing random disjoint sets")
 
@@ -372,10 +401,10 @@ for set in I_K
 end
 
 # Initialize λ iterates to ones
-λ = ones((n,1))
+λ = ones((n,1)).*1e1
 
 # Create random matrix A_help
-A_help = randn(Float64 ,n, n)
+A_help = rand(Float64 ,n, n)
 
 Q = A_help' * A_help
 
@@ -384,7 +413,7 @@ display(Q)
 print("\n")
 
 # Initialize also random q vector 
-q = randn(Float64, (n,1))
+q = rand(Float64, (n,1))
 
 println("q vector:")
 display(q)
@@ -397,7 +426,7 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 20000
+max_iter = 1000
 
 # Initialize ε
 ε = 1e-8
@@ -462,6 +491,5 @@ println("Starting λs:")
 display(λ)
 print("\n")
 
-
 testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, 
-        max_iter, ε, τ, F, A, convex_sol.opt_val)
+        max_iter, ε, τ, stepsizes, F, A, convex_sol.opt_val)

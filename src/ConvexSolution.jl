@@ -17,15 +17,15 @@ end
 
 function compute_solution(convex_sol)
 
-    # optimizers = [SCS.Optimizer(verbose=true), ECOS.Optimizer, COSMO.Optimizer]
-    optimizers = [ COSMO.Optimizer ]
+    optimizers = [SCS.Optimizer(verbose=true), ECOS.Optimizer, COSMO.Optimizer]
+    # optimizers = [ COSMO.Optimizer ]
 
     problem = minimize( quadform(convex_sol.x, convex_sol.Q) + dot(convex_sol.q, convex_sol.x) )
 
-    problem.constraints += [convex_sol.A * convex_sol.x == 1]
-    # for row in eachrow(convex_sol.A)
-    #     problem.constraints += [row' * convex_sol.x == 1]
-    # end
+    # problem.constraints += [convex_sol.A * convex_sol.x == ones((convex_sol.n, 1))]
+    for row in eachrow(convex_sol.A)
+        problem.constraints += [row' * convex_sol.x == 1]
+    end
 
     problem.constraints += [convex_sol.x >= 0]
 

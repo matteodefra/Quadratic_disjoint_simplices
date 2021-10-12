@@ -19,6 +19,7 @@ Create struct solver to approach the problem:
     grads::Array{Float64}                       Keep track of the subgradient at each iteration 
     G_t::Array{Float64}                         Cumulative sum of the outer product of the gradients, keep only diagonal
     s_t::Array{Float64}                         Keep track of the solution of the problem 2.4 (see report)
+    H_t::Array{Float64}                         Keep the diagonal δ*ones() vector in the struct, and add the s_t iteratively
     avg_gradient::Array{Float64}                Keep track of the average of the subgradients
     d_i::Array{Float64}                         Keep track of the current deflected direction
     deflection::Bool                            Whether to use deflection or not 
@@ -42,6 +43,7 @@ Create struct solver to approach the problem:
     timings::Vector{Float64}                    Store timing execution for each iteration
     gaps::Vector{Float64}                       Store dual gap found at each iteration
     update_formula::Int                         Update rule to be used  
+    stepsize_choice::Int                        Stepsize choice to use
     F::Any                                      Save the factorization of Full_mat
     A::Array{Int64}                             Save the constraint matrix A 
     Off_the_shelf_primal::Float64               f(x*) computed with an off-the-shelf solver    
@@ -80,6 +82,7 @@ mutable struct Solver
     timings :: Vector{Float64}
     gaps :: Vector{Float64}
     update_formula :: Int
+    stepsize_choice :: Int
     F :: Any
     A :: Array{Int64}
     Off_the_shelf_primal :: Float64
@@ -125,9 +128,17 @@ function compute_update_rule(solver, H_t)
         # Add the latter diagonal of g_t * g_t' component-wise to the vector G_t
         full_prod = last_subgrad .* last_subgrad
 
+        if any( isnan, full_prod )
+            println("full_prod is nan!")
+        end
+
         solver.G_t .+= full_prod
 
         G_t = solver.G_t 
+
+        if any( isnan, G_t )
+            println("G_t is nan!")
+        end
 
         # Replace all the NaN values with 0.0 to avoid NaN values in the iterates
         replace!(x -> x < 0 ? abs(x) : x, G_t)
@@ -153,7 +164,7 @@ function compute_update_rule(solver, H_t)
         update_part = solver.η * (H_t.^(-1)) .* solver.grads[:,end]
         
         # Plus needed: constrain λ to be bigger, we are maximizing the dual function
-        λ = solver.λ - update_part
+        λ = solver.λ + update_part
 
     end
 
@@ -309,6 +320,12 @@ end
 =#  
 function my_ADAGRAD(solver)
 
+    h = rand()
+
+    β = rand()
+
+    α = 1 # or rand()
+
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
 
@@ -351,7 +368,23 @@ function my_ADAGRAD(solver)
         push!(solver.num_iterations, solver.iteration)
 
         # Modify η in DSS way
-        solver.η = 1 / (solver.iteration)
+        if solver.stepsize_choice == 0
+
+            solver.η = h
+
+        elseif solver.stepsize_choice == 1
+
+            solver.η = isempty( solver.x_distances ) ? 1 : (solver.x_distances[end] / norm( solver.grads[:, end] ))
+
+        elseif solver.stepsize_choice == 2
+
+            solver.η = α / (β + solver.iteration)
+
+        else
+
+            solver.η = α / sqrt(solver.iteration)
+
+        end
 
         # Assign previous_λ
         previous_λ = solver.λ
@@ -373,6 +406,10 @@ function my_ADAGRAD(solver)
         which is always differentiable since it is an hyperplane
         =#
         subgrad = get_subgrad(solver)
+
+        if any( isnan, subgrad )
+            println("Subgrad is nan!")
+        end
 
         if solver.deflection
 
@@ -405,6 +442,10 @@ function my_ADAGRAD(solver)
 
         H_t += s_t
 
+        if any( isnan, H_t )
+            println("H_t is nan!")
+        end
+
         diff = solver.λ - solver.q
 
         b = vcat(diff, o)
@@ -414,6 +455,10 @@ function my_ADAGRAD(solver)
             backward and forward substitution to optimize the computation    
         =# 
         x_μ = solver.F \ b
+
+        if any( isnan, x_μ )
+            println("x_μ is nan!")
+        end
 
         solver.x, μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
@@ -461,8 +506,10 @@ function my_ADAGRAD(solver)
         end
 
         if current_gap < 0
-            println("Gap is negative")
-            solver.λ .+= 1e-1
+            # Gap is negative: throw away the just computed value of λ and get the
+            # last good one 
+            solver.λ_values = solver.λ_values[1:end, 1:(end-1)]
+            solver.λ = isempty( solver.λ_values ) ? ones((solver.n,1)) : solver.λ_values[:,end]
         end 
 
         if ϕ_λ > solver.best_dual && current_gap > 0
@@ -478,7 +525,7 @@ function my_ADAGRAD(solver)
         if check_λ_norm(solver, solver.λ, previous_λ)
             # Add last row
             push!(df, [ solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
-            break
+            # break
         end
 
         if solver.iteration % 2000 == 0
@@ -522,7 +569,7 @@ function my_ADAGRAD(solver)
     print("Iterations: $(solver.iteration)\tTotal time: $(round(sum(solver.timings), digits=6))\n")
 
     # Save results in CSV file
-    CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula)_defl=$(solver.deflection).csv", df)
+    CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula)_defl=$(solver.deflection)_step=$(solver.stepsize_choice).csv", df)
 
     return solver
 

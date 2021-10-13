@@ -1,9 +1,10 @@
 module ConvexSolution
 
 using Convex
-import SCS
-import ECOS
+# import SCS
+# import ECOS
 import COSMO
+using MAT
 
 mutable struct ConvexSol
     n :: Int
@@ -17,8 +18,8 @@ end
 
 function compute_solution(convex_sol)
 
-    optimizers = [SCS.Optimizer(verbose=true), ECOS.Optimizer, COSMO.Optimizer]
-    # optimizers = [ COSMO.Optimizer ]
+    # optimizers = [SCS.Optimizer(verbose=true), ECOS.Optimizer, COSMO.Optimizer]
+    optimizers = [ COSMO.Optimizer ]
 
     problem = minimize( quadform(convex_sol.x, convex_sol.Q) + dot(convex_sol.q, convex_sol.x) )
 
@@ -60,6 +61,12 @@ function compute_solution(convex_sol)
     println("Complete values")
     display(results)
     print("\n")
+
+    matwrite("mat/convexsol.mat", Dict(
+        "Q" => convex_sol.Q,
+        "q" => convex_sol.q, 
+        "x" => evaluate(convex_sol.x)
+    ); compress = true)
 
     return convex_sol
 end

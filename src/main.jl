@@ -7,6 +7,7 @@ using Random
 using Plots
 using Colors
 using Convex
+using MAT
 using .Utils
 using .ADAGRAD_Solver
 using .ConvexSolution
@@ -124,7 +125,7 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
             # solvers = [solver_rule1, solver_rule2]
 
             #------------------------------------------------------#
-            #-----------     Results for rule 1     ---------------#
+            #------------     Results for rules     ---------------#
             #------------------------------------------------------#
 
             for sol in solvers
@@ -149,6 +150,14 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
                 display(dual_gap)
                 print("\n")
+
+                matwrite("mat/matsolution_rule=$(sol.update_formula)_defl=$(deflection)_step=$(stepsize).mat", Dict(
+                    "Q" => sol.Q,
+                    "q" => sol.q, 
+                    "x" => sol.best_x,
+                    "lambda" => sol.best_λ
+                ); compress = true)
+
 
             end
 
@@ -401,10 +410,10 @@ for set in I_K
 end
 
 # Initialize λ iterates to ones
-λ = ones((n,1)).*1e1
+λ = ones((n,1))
 
 # Create random matrix A_help
-A_help = rand(Float64 ,n, n)
+A_help = rand(Float64, n, n)
 
 Q = A_help' * A_help
 

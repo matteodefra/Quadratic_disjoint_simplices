@@ -147,7 +147,15 @@ function compute_update_rule(solver, H_t)
         G_t = 1 ./ G_t
         G_t = sqrt.(G_t)
 
-        λ = solver.λ + (solver.η * G_t .* solver.grads[:,end])
+        if solver.deflection
+            
+            λ = solver.λ + (solver.η * G_t .* solver.d_i)
+        
+        else
+
+            λ = solver.λ + (solver.η * G_t .* solver.grads[:,end])
+        
+        end
 
     elseif solver.update_formula == 2
 
@@ -157,14 +165,21 @@ function compute_update_rule(solver, H_t)
         # Average the row sum of the gradient based on the current iteration in a new variable
         avg_gradient_copy = solver.avg_gradient ./ solver.iteration
 
-        λ = solver.iteration * solver.η * ( ( - H_t.^(-1) ) .* avg_gradient_copy)
+        λ = solver.iteration * solver.η * (- H_t^(-1) * avg_gradient_copy)
 
     else 
 
-        update_part = solver.η * (H_t.^(-1)) .* solver.grads[:,end]
-        
+        if solver.deflection
+    
+            update_part = solver.η * H_t^(-1) * solver.d_i
+    
+        else
+
+            update_part = solver.η * H_t^(-1) * solver.grads[:,end]
+
+        end
         # Plus needed: constrain λ to be bigger, we are maximizing the dual function
-        λ = solver.λ + update_part
+        λ = solver.λ - update_part
 
     end
 
@@ -318,7 +333,7 @@ end
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
 =#  
-function my_ADAGRAD(solver)
+function my_ADAGRAD(solver, Full_mat)
 
     h = rand()
 
@@ -425,11 +440,11 @@ function my_ADAGRAD(solver)
 
         # Store subgradient in matrix
         # solver.grads = [solver.grads subgrad]
-        solver.deflection ? solver.grads = [solver.grads solver.d_i] : solver.grads = [solver.grads subgrad]
+        solver.grads = [solver.grads subgrad]
         
         # Solution of dual_function of problem 2.4 (see report)
         # Accumulate the squared summation into solver.s_t structure
-        solver.deflection ? solver.s_t .+= (solver.d_i.^2) : solver.s_t .+= (subgrad.^2)
+        solver.s_t .+= (subgrad.^2)
 
         # Create a copy of solver.s_t (avoid modifying the original one)
         s_t = solver.s_t 
@@ -454,7 +469,7 @@ function my_ADAGRAD(solver)
             Solve linear system efficiently using \ of Julia: will automatically use techniques like 
             backward and forward substitution to optimize the computation    
         =# 
-        x_μ = solver.F \ b
+        x_μ = \(solver.F, b)
 
         if any( isnan, x_μ )
             println("x_μ is nan!")
@@ -471,10 +486,16 @@ function my_ADAGRAD(solver)
         # Compute Lagrangian function value
         ϕ_λ = dual_function(solver, solver.x, solver.λ)[1]
 
-        if isnan( ϕ_λ ) || any( isnan, solver.x ) || any( isnan, solver.λ )
-            println("Some NaN values detected")
+        if any( isnan, solver.λ )
+            println("solver.λ is nan!")
             break
-        end
+        elseif any( isnan, solver.x )
+            println("solver.x is nan!")
+            break
+        elseif isnan( ϕ_λ ) 
+            println("ϕ_λ is nan!")
+            break
+        end 
 
         # Storing current relaxation value
         push!(solver.dual_values, ϕ_λ)
@@ -525,7 +546,7 @@ function my_ADAGRAD(solver)
         if check_λ_norm(solver, solver.λ, previous_λ)
             # Add last row
             push!(df, [ solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
-            # break
+            break
         end
 
         if solver.iteration % 2000 == 0

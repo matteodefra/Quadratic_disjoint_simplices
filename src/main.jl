@@ -13,7 +13,7 @@ using .ADAGRAD_Solver
 using .ConvexSolution
 
 
-function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
+function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, Full_mat, F, A, primal_optimal)
     #------------------------------------------------------#
     #----------     Create problem structs     ------------#
     #------------------------------------------------------#
@@ -24,111 +24,49 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
         for stepsize in stepsizes
 
-            # Create three different struct to exploit the three update rule
-            solver_rule1 = ADAGRAD_Solver.Solver(
-                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-                Array{Float64}(undef, n, 1), # G_t
-                Array{Float64}(undef, n, 1), # s_t
-                δ .* Iden, # H_t
-                Array{Float64}(undef, n, 1), # avg_gradient
-                Array{Float64}(undef, n, 1), # d_i
-                deflection, # deflection
-                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-                0, # best_iteration
-                x, # best_x
-                λ, # best_λ
-                Vector{Float64}(), # num_iterations
-                Vector{Float64}(), # dual_values
-                Array{Float64}(undef, n, 0), # x_values
-                Array{Float64}(undef, n, 0), # λ_values
-                Vector{Float64}(), # λ_distances
-                Vector{Float64}(), # x_distances
-                Vector{Float64}(), # timings
-                Vector{Float64}(), # gaps
-                1, # update_rule
-                stepsize, # stepsize_choice
-                F, # Best factorization
-                A, # Constraint matrix
-                primal_optimal # Primal optimal value
-            )
+            for update_rule in [1,2,3]
 
-            solver_rule2 = ADAGRAD_Solver.Solver(
-                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-                Array{Float64}(undef, n, 1), # G_t
-                Array{Float64}(undef, n, 1), # s_t
-                δ .* Iden, # H_t
-                Array{Float64}(undef, n, 1), # avg_gradient
-                Array{Float64}(undef, n, 1), # d_i
-                deflection, # deflection
-                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-                0, # best_iteration
-                x, # best_x
-                λ, # best_λ
-                Vector{Float64}(), # num_iterations
-                Vector{Float64}(), # dual_values
-                Array{Float64}(undef, n, 0), # x_values
-                Array{Float64}(undef, n, 0), # λ_values
-                Vector{Float64}(), # λ_distances
-                Vector{Float64}(), # x_distances
-                Vector{Float64}(), # timings
-                Vector{Float64}(), # gaps
-                2, # update_rule
-                stepsize, # stepsize_choice
-                F, # Best factorization
-                A, # Constraint matrix
-                primal_optimal # Primal optimal value
-            )
+                # Create three different struct to exploit the three update rule
+                sol = ADAGRAD_Solver.Solver(
+                    n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                    #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
+                    Array{Float64}(undef, n, 1), # G_t
+                    Array{Float64}(undef, n, 1), # s_t
+                    δ .* Iden, # H_t
+                    Array{Float64}(undef, n, 1), # avg_gradient
+                    Array{Float64}(undef, n, 1), # d_i
+                    deflection, # deflection
+                    Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
+                    0, # best_iteration
+                    x, # best_x
+                    λ, # best_λ
+                    Vector{Float64}(), # num_iterations
+                    Vector{Float64}(), # dual_values
+                    Array{Float64}(undef, n, 0), # x_values
+                    Array{Float64}(undef, n, 0), # λ_values
+                    Vector{Float64}(), # λ_distances
+                    Vector{Float64}(), # x_distances
+                    Vector{Float64}(), # timings
+                    Vector{Float64}(), # gaps
+                    update_rule, # update_rule
+                    stepsize, # stepsize_choice
+                    F, # Best factorization
+                    A, # Constraint matrix
+                    primal_optimal # Primal optimal value
+                )
 
-            solver_rule3 = ADAGRAD_Solver.Solver(
-                n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-                Array{Float64}(undef, n, 1), # G_t
-                Array{Float64}(undef, n, 1), # s_t
-                δ .* Iden, # H_t
-                Array{Float64}(undef, n, 1), # avg_gradient
-                Array{Float64}(undef, n, 1), # d_i
-                deflection, # deflection
-                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-                0, # best_iteration
-                x, # best_x
-                λ, # best_λ
-                Vector{Float64}(), # num_iterations
-                Vector{Float64}(), # dual_values
-                Array{Float64}(undef, n, 0), # x_values
-                Array{Float64}(undef, n, 0), # λ_values
-                Vector{Float64}(), # λ_distances
-                Vector{Float64}(), # x_distance
-                Vector{Float64}(), # timings
-                Vector{Float64}(), # gaps
-                3, # update_rule
-                stepsize, # stepsize_choice
-                F, # Best factorization
-                A, # Constraint matrix
-                primal_optimal # Primal optimal value
-            )
-
-            #------------------------------------------------------#
-            #--------     Calculate custom solution     -----------#
-            #------------------------------------------------------#
+                #------------------------------------------------------#
+                #--------     Calculate custom solution     -----------#
+                #------------------------------------------------------#
 
 
-            # Now calculate the results of ADAGRAD in the three different fashion way
-            solver_rule1 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule1)
+                # Now calculate the results of ADAGRAD in the three different fashion way
+                sol = @time ADAGRAD_Solver.my_ADAGRAD(sol, Full_mat)
 
-            solver_rule2 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule2)
+                #------------------------------------------------------#
+                #------------     Results for rules     ---------------#
+                #------------------------------------------------------#
 
-            solver_rule3 = @time ADAGRAD_Solver.my_ADAGRAD(solver_rule3)
-
-            solvers = [solver_rule1, solver_rule2, solver_rule3]
-            # solvers = [solver_rule1, solver_rule2]
-
-            #------------------------------------------------------#
-            #------------     Results for rules     ---------------#
-            #------------------------------------------------------#
-
-            for sol in solvers
                 print("\n\n\n\n")
                 print("------------------- Rule $(sol.update_formula) results -------------------\n\n")
 
@@ -158,18 +96,17 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                     "lambda" => sol.best_λ
                 ); compress = true)
 
+                #------------------------------------------------------#
+                #-----------     Plotting utilities     ---------------#
+                #------------------------------------------------------#
 
-            end
+                # Plots.theme(:bright)
 
-            #------------------------------------------------------#
-            #-----------     Plotting utilities     ---------------#
-            #------------------------------------------------------#
+                gr()
 
-            # Plots.theme(:bright)
-
-            gr()
-
-            for sol in solvers
+                if sol.iteration == 1
+                    break
+                end
 
                 y = ones(3) 
                 title = Plots.scatter(y, marker=0,markeralpha=0, annotations=(2, y[2], Plots.text("Update rule $(sol.update_formula), n=$(sol.n) and K=$(sol.K)", pointsize = 12)), axis=false, fillcolor=:white, grid=false, background_color=:white,background_color_subplot=:white, framestyle=:none, leg=false,size=(200,100),foreground_color=:white)
@@ -207,8 +144,6 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                             formatter = :plain )
                 xlabel!("Iterations")
                 ylabel!("Dual value")
-                # display(plt)
-
 
                 ticks = []
                 ticks_string = []
@@ -244,7 +179,6 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                             formatter = :scientific )
                 xlabel!("Iterations")
                 ylabel!("Gap f(x*)-ϕ(λ)")
-                # display(plt2)
 
                 plt3 = plot(sol.num_iterations, 
                             replace!(val -> val <= 0 ? 1e-8 : val, sol.λ_distances), 
@@ -270,7 +204,6 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                             formatter = :plain )
                 xlabel!("Iterations")
                 ylabel!("Residual λ")
-                # display(plt3)
 
                 plt4 = plot(sol.num_iterations, 
                             sol.x_distances, 
@@ -296,21 +229,7 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                             formatter = :plain )
                 xlabel!("Iterations")
                 ylabel!("Residual x")
-                # display(plt4)
-
-                # savefig(plt, "plots/Convergence_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection)_gap=$(round(gaps["Rule $i"], digits=2)).png")
-                # savefig(plt2, "plots/Gaps_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-                # savefig(plt3, "plots/Residual_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-                # savefig(plt4, "plots/Residual_x_rule=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K)_defl=$(solvers[i].deflection).png")
-                
-                # total_plot = plot(plt, plt2, plt3, plt4, 
-                #                 layout = @layout([a b; c d]), 
-                #                 title = "Update $(solvers[i].update_formula)",
-                #                 dpi = 360)
-                
-                # savefig(total_plot, "plots/Subplot=$(solvers[i].update_formula)_n=$(solvers[i].n)_K=$(solvers[i].K).png")
-                
-
+               
                 # combine the 'title' plot with your real plots
                 total_plot = Plots.plot(
                     title,
@@ -400,7 +319,7 @@ display(I_K)
 print("\n")
 
 # Initialize x iterates to feasible solution
-x = zeros((n,1))
+x = ones((n,1))
 
 # Feasible x
 for set in I_K
@@ -468,7 +387,7 @@ println("Factorization:")
 display(F)
 print("\n")
 
-Full_mat = nothing
+# Full_mat = nothing
 A_help = nothing
 GC.gc()
 
@@ -501,4 +420,4 @@ display(λ)
 print("\n")
 
 testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, 
-        max_iter, ε, τ, stepsizes, F, A, convex_sol.opt_val)
+        max_iter, ε, τ, stepsizes, Full_mat, F, A, convex_sol.opt_val)

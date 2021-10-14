@@ -5,6 +5,7 @@ using LinearAlgebra
 using Printf
 using DataFrames
 using CSV
+using QDLDL
 
 export Solver
 
@@ -165,21 +166,25 @@ function compute_update_rule(solver, H_t)
         # Average the row sum of the gradient based on the current iteration in a new variable
         avg_gradient_copy = solver.avg_gradient ./ solver.iteration
 
-        λ = solver.iteration * solver.η * (- H_t^(-1) * avg_gradient_copy)
+        λ = solver.iteration * solver.η * (- H_t.^(-1) .* avg_gradient_copy)
 
-    else 
+    elseif solver.update_formula == 3 
 
         if solver.deflection
     
-            update_part = solver.η * H_t^(-1) * solver.d_i
+            update_part = solver.η * H_t.^(-1) .* solver.d_i
     
         else
 
-            update_part = solver.η * H_t^(-1) * solver.grads[:,end]
+            update_part = solver.η * H_t.^(-1) .* solver.grads[:,end]
 
         end
         # Plus needed: constrain λ to be bigger, we are maximizing the dual function
         λ = solver.λ - update_part
+
+    else
+
+        λ = solver.λ + (solver.η * (solver.grads[:,end] ./ norm(solver.grads[:,end])^2))
 
     end
 
@@ -337,7 +342,7 @@ function my_ADAGRAD(solver, Full_mat)
 
     h = rand()
 
-    β = rand()
+    β = 0#rand()
 
     α = 1 # or rand()
 
@@ -444,7 +449,7 @@ function my_ADAGRAD(solver, Full_mat)
         
         # Solution of dual_function of problem 2.4 (see report)
         # Accumulate the squared summation into solver.s_t structure
-        solver.s_t .+= (subgrad.^2)
+        solver.s_t += (subgrad.^2)
 
         # Create a copy of solver.s_t (avoid modifying the original one)
         s_t = solver.s_t 
@@ -474,6 +479,11 @@ function my_ADAGRAD(solver, Full_mat)
         if any( isnan, x_μ )
             println("x_μ is nan!")
         end
+
+        # x_μ2 = solve(solver.F, b)
+
+        # println("Diff between x's")
+        # display(norm(x_μ - x_μ2))
 
         solver.x, μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 

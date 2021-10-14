@@ -1,6 +1,7 @@
 include("./ADAGRAD_Solver.jl")
 include("./Utils.jl")
 include("./ConvexSolution.jl")
+include("./JuMPSolution.jl")
 
 using LinearAlgebra
 using Random
@@ -8,9 +9,12 @@ using Plots
 using Colors
 using Convex
 using MAT
+using QDLDL
+using SparseArrays
 using .Utils
 using .ADAGRAD_Solver
 using .ConvexSolution
+using .JuMPSolution
 
 
 function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, Full_mat, F, A, primal_optimal)
@@ -24,17 +28,16 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
         for stepsize in stepsizes
 
-            for update_rule in [1,2,3]
+            for update_rule in [1,2,3,4]
 
                 # Create three different struct to exploit the three update rule
                 sol = ADAGRAD_Solver.Solver(
                     n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                    #Diagonal(Matrix{Float64}(undef, n, n)), # G_t 
-                    Array{Float64}(undef, n, 1), # G_t
-                    Array{Float64}(undef, n, 1), # s_t
+                    fill(0.0, n), # G_t 
+                    fill(0.0, n), # s_t
                     δ .* Iden, # H_t
-                    Array{Float64}(undef, n, 1), # avg_gradient
-                    Array{Float64}(undef, n, 1), # d_i
+                    fill(0.0, n), # avg_gradient
+                    fill(0.0, n), # d_i
                     deflection, # deflection
                     Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
                     0, # best_iteration
@@ -105,7 +108,7 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                 gr()
 
                 if sol.iteration == 1
-                    break
+                    @goto noplot
                 end
 
                 y = ones(3) 
@@ -237,6 +240,8 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                     layout=grid(2,1,heights=[0.05,0.95])
                 )
                 savefig(total_plot, "plots/Rule=$(sol.update_formula)_n=$(sol.n)_K=$(sol.K)_defl=$(sol.deflection)_step=$(sol.stepsize_choice).png")
+
+                @label noplot
 
             end
 
@@ -370,6 +375,8 @@ print("\n")
 
 Full_mat = Utils.construct_full_matrix(Q, A, K)
 
+Full_mat =  SparseMatrixCSC(Symmetric(Full_mat))
+
 println("Full matrix:")
 display(Full_mat)
 print("\n")
@@ -381,7 +388,9 @@ print("\n")
         Bunch-Kaufman ( if Q=Q^T )
         pivoted LU ( otherwise )
 =#
-F = factorize(Full_mat)
+F = lu(Full_mat)
+# F = cholesky(Full_mat)
+# F = qdldl(Full_mat)
 
 println("Factorization:")
 display(F)
@@ -391,7 +400,16 @@ print("\n")
 A_help = nothing
 GC.gc()
 
-# x = (F \ vcat(λ - q, ones((K,1))))[1:n]
+x = (F \ vcat(λ - q, ones((K,1))))[1:n]
+# x = solve(F, vcat(λ - q, ones((K,1))))[1:n]
+
+println("Starting x:")
+display(x)
+print("\n")
+
+println("Starting λs:")
+display(λ)
+print("\n")
 
 #------------------------------------------------------#
 #-----    Use Convex.jl to compute primal solution   ----#
@@ -407,17 +425,29 @@ convex_sol = ConvexSolution.ConvexSol(
 
 convex_sol = ConvexSolution.compute_solution(convex_sol)
 
-println("Optimal value:")
+println("Convex.jl optimal value:")
 display(convex_sol.opt_val)
 print("\n")
 
-println("Starting x:")
-display(x)
+
+#------------------------------------------------------#
+#-----    Use JuMP.jl to compute primal solution   ----#
+#------------------------------------------------------#
+
+jump_sol = JuMPSolution.JuMPSol(
+    n,
+    K,
+    A,
+    Q,
+    q
+)
+
+jump_sol = JuMPSolution.compute_solution(jump_sol)
+
+println("JuMP.jl optimal value:")
+display(jump_sol.opt_val)
 print("\n")
 
-println("Starting λs:")
-display(λ)
-print("\n")
 
 testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, 
         max_iter, ε, τ, stepsizes, Full_mat, F, A, convex_sol.opt_val)

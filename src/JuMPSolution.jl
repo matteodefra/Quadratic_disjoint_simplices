@@ -2,6 +2,7 @@ module JuMPSolution
 
 using JuMP
 using LinearAlgebra
+using MAT
 import Ipopt
 import Test
 
@@ -25,7 +26,7 @@ function compute_solution(jump_sol)
     @constraint( model, jump_sol.A * x .== ones((jump_sol.K,1)) )
     optimize!(model)
 
-    print(model)
+    # print(model)
     println("Objective value: ", objective_value(model))
     println("x = ", value.(x))
 
@@ -35,6 +36,12 @@ function compute_solution(jump_sol)
     Test.@test primal_status(model) == MOI.FEASIBLE_POINT
     # Test.@test objective_value(model) ≈ 0.32699 atol = 1e-5
     # Test.@test value.(x) ≈ 0.32699 atol = 1e-5
+
+    matwrite("mat/jumpsol.mat", Dict(
+        "Q" => jump_sol.Q,
+        "q" => jump_sol.q, 
+        "x" => value.(x)
+    ); compress = true)
 
     return jump_sol
 

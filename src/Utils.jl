@@ -1,5 +1,7 @@
 module Utils
 
+using LinearAlgebra
+
 #= 
 Create matrix of KKT conditions
     Q A^T
@@ -36,10 +38,15 @@ function construct_A(K, n, I_K)
 end
 
 
+#
+function primal_function(Q, q, x)
+    return (x ⋅ (Q * x)) + q ⋅ x
+end
+
 # # Compute dual function value
-# function compute_dualvalue(Q, q, x, λ)
-#     return (x' * Q * x) .+ (q' * x) .- (λ' * x)
-# end
+function compute_dualvalue(Q, q, x, λ)
+    return (x ⋅ (Q * x)) + (q ⋅ x) - (λ ⋅ x)
+end
 
 #=
     Solve the problem of 

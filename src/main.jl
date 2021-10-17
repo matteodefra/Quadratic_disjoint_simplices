@@ -1,7 +1,6 @@
 include("./ADAGRAD_Solver.jl")
 include("./Utils.jl")
 include("./ConvexSolution.jl")
-include("./JuMPSolution.jl")
 
 using LinearAlgebra
 using Random
@@ -9,15 +8,12 @@ using Plots
 using Colors
 using Convex
 using MAT
-using QDLDL
 using SparseArrays
 using .Utils
 using .ADAGRAD_Solver
 using .ConvexSolution
-using .JuMPSolution
 
-
-function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, Full_mat, F, A, primal_optimal)
+function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
     #------------------------------------------------------#
     #----------     Create problem structs     ------------#
     #------------------------------------------------------#
@@ -28,7 +24,7 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
         for stepsize in stepsizes
 
-            for update_rule in [1,2,3,4]
+            for update_rule in [1]
 
                 # Create three different struct to exploit the three update rule
                 sol = ADAGRAD_Solver.Solver(
@@ -36,7 +32,6 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
                     fill(0.0, n), # G_t 
                     fill(0.0, n), # s_t
                     δ .* Iden, # H_t
-                    fill(0.0, n), # avg_gradient
                     fill(0.0, n), # d_i
                     deflection, # deflection
                     Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
@@ -64,7 +59,7 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
 
                 # Now calculate the results of ADAGRAD in the three different fashion way
-                sol = @time ADAGRAD_Solver.my_ADAGRAD(sol, Full_mat)
+                sol = @time ADAGRAD_Solver.my_ADAGRAD(sol)
 
                 #------------------------------------------------------#
                 #------------     Results for rules     ---------------#
@@ -276,6 +271,7 @@ stepsizes = readline()
     1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
     2: Square summable but not summable     η = α / (b + t)     with α > 0 and b ≥ 0
     3: Nonsummable diminishing              η = α / √t          with α > 0 
+    4: Optimal                              η = f(x*) - ϕ(λ_t)/∥ g_k ∥_2
 =#
 stepsizes = stepsizes == "y" ? [0, 1, 2, 3] : [2]
 
@@ -359,7 +355,7 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 1000
+max_iter = 5000
 
 # Initialize ε
 ε = 1e-8
@@ -390,7 +386,6 @@ print("\n")
 =#
 F = lu(Full_mat)
 # F = cholesky(Full_mat)
-# F = qdldl(Full_mat)
 
 println("Factorization:")
 display(F)
@@ -429,25 +424,5 @@ println("Convex.jl optimal value:")
 display(convex_sol.opt_val)
 print("\n")
 
-
-#------------------------------------------------------#
-#-----    Use JuMP.jl to compute primal solution   ----#
-#------------------------------------------------------#
-
-jump_sol = JuMPSolution.JuMPSol(
-    n,
-    K,
-    A,
-    Q,
-    q
-)
-
-jump_sol = JuMPSolution.compute_solution(jump_sol)
-
-println("JuMP.jl optimal value:")
-display(jump_sol.opt_val)
-print("\n")
-
-
 testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, 
-        max_iter, ε, τ, stepsizes, Full_mat, F, A, convex_sol.opt_val)
+        max_iter, ε, τ, stepsizes, F, A, convex_sol.opt_val)

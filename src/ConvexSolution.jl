@@ -1,7 +1,7 @@
 module ConvexSolution
 
 using Convex
-# import SCS
+import SCS
 # import ECOS
 import COSMO
 using MAT
@@ -19,7 +19,7 @@ end
 function compute_solution(convex_sol)
 
     # optimizers = [SCS.Optimizer(verbose=true), ECOS.Optimizer, COSMO.Optimizer]
-    optimizers = [ COSMO.Optimizer ]
+    optimizers = [ SCS.Optimizer(verbose=true) ]
 
     problem = minimize( quadform(convex_sol.x, convex_sol.Q) + dot(convex_sol.q, convex_sol.x) )
 
@@ -65,7 +65,8 @@ function compute_solution(convex_sol)
     matwrite("mat/convexsol.mat", Dict(
         "Q" => convex_sol.Q,
         "q" => convex_sol.q, 
-        "x" => evaluate(convex_sol.x)
+        "x" => evaluate(convex_sol.x),
+        "A" => convex_sol.A
     ); compress = true)
 
     return convex_sol

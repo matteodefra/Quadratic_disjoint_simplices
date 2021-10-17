@@ -5,7 +5,7 @@ using LinearAlgebra
 using Printf
 using DataFrames
 using CSV
-using QDLDL
+using IterativeSolvers
 
 export Solver
 
@@ -21,7 +21,6 @@ Create struct solver to approach the problem:
     G_t::Array{Float64}                         Cumulative sum of the outer product of the gradients, keep only diagonal
     s_t::Array{Float64}                         Keep track of the solution of the problem 2.4 (see report)
     H_t::Array{Float64}                         Keep the diagonal δ*ones() vector in the struct, and add the s_t iteratively
-    avg_gradient::Array{Float64}                Keep track of the average of the subgradients
     d_i::Array{Float64}                         Keep track of the current deflected direction
     deflection::Bool                            Whether to use deflection or not 
     Q::Matrix{Float64}                          Q matrix of the function problem
@@ -60,7 +59,6 @@ mutable struct Solver
     G_t :: Array{Float64}
     s_t :: Array{Float64}
     H_t :: Array{Float64}
-    avg_gradient :: Array{Float64}
     d_i :: Array{Float64}
     deflection :: Bool
     Q :: Matrix{Float64}
@@ -96,7 +94,13 @@ end
 
 =#
 function dual_function(solver, previous_x, previous_λ)
-    return (previous_x' * solver.Q * previous_x) .+ (solver.q' * previous_x) .- (previous_λ' * previous_x)
+    return (previous_x ⋅ (solver.Q * previous_x)) + (solver.q ⋅ previous_x) - (previous_λ ⋅ previous_x)
+    # return (previous_x' * solver.Q * previous_x) .+ (solver.q' * previous_x) .- (previous_λ' * previous_x)
+end
+
+
+function primal_function(solver, feasible_x)
+    return (feasible_x ⋅ (solver.Q * feasible_x)) + (solver.q ⋅ feasible_x)
 end
 
 
@@ -125,7 +129,7 @@ function compute_update_rule(solver, H_t)
 
         # Add only the latter subgradient, since summation moves along with 
         last_subgrad = solver.grads[:, end]
-
+        
         # Add the latter diagonal of g_t * g_t' component-wise to the vector G_t
         full_prod = last_subgrad .* last_subgrad
 
@@ -133,7 +137,15 @@ function compute_update_rule(solver, H_t)
             println("full_prod is nan!")
         end
 
+        # println("Full prod")
+        # display(full_prod)
+        # print("\n")
+
         solver.G_t .+= full_prod
+
+        # println("Solver G_t")
+        # display(solver.G_t)
+        # print("\n")
 
         G_t = solver.G_t 
 
@@ -141,50 +153,126 @@ function compute_update_rule(solver, H_t)
             println("G_t is nan!")
         end
 
+        if any(x -> x<0, G_t) 
+            println("G_t is negative")
+        end
+
         # Replace all the NaN values with 0.0 to avoid NaN values in the iterates
-        replace!(x -> x < 0 ? abs(x) : x, G_t)
+        # replace!(x -> x < 0 ? abs(x) : x, G_t)
 
         # Apply exponentiation and square root
         G_t = 1 ./ G_t
         G_t = sqrt.(G_t)
 
+        # println("Matrix G_t")
+        # display(G_t)
+        # print("\n")
+
         if solver.deflection
+
+            # println("Direction")
+            # display(solver.d_i)
+            # print("\n")
+
+            part = G_t .* solver.d_i
+
+            println("Product")
+            display(part)
+            print("\n")
             
-            λ = solver.λ + (solver.η * G_t .* solver.d_i)
+            λ = solver.λ + (solver.η * part)
         
         else
 
-            λ = solver.λ + (solver.η * G_t .* solver.grads[:,end])
+            # println("Subgradient")
+            # display(solver.grads[:,end])
+            # print("\n")
+
+            part = G_t .* solver.grads[:, end]
+
+            # println("Product")
+            # display(part)
+            # print("\n")
+
+            λ = solver.λ + (solver.η * part)
         
         end
 
     elseif solver.update_formula == 2
 
-        # Sum the latter subgradient found
-        solver.avg_gradient .+= solver.grads[:, end]
-
         # Average the row sum of the gradient based on the current iteration in a new variable
-        avg_gradient_copy = solver.avg_gradient ./ solver.iteration
+        avg_gradient_copy = solver.s_t ./ solver.iteration
 
-        λ = solver.iteration * solver.η * (- H_t.^(-1) .* avg_gradient_copy)
+        # println("Average gradient")
+        # display(avg_gradient_copy)
+        # print("\n")
+
+        H_t = H_t.^(-1)
+
+        # println("H_t")
+        # display(H_t)
+        # print("\n")
+
+        part = - H_t .* avg_gradient_copy
+
+        # println("Product")
+        # display(part)
+        # print("\n")
+
+        λ = solver.iteration * solver.η * part
 
     elseif solver.update_formula == 3 
 
         if solver.deflection
-    
-            update_part = solver.η * H_t.^(-1) .* solver.d_i
+
+            H_t = H_t.^(-1)
+
+            println("H_t")
+            display(H_t)
+            print("\n")
+
+            part = H_t .* solver.d_i 
+
+            println("Product")
+            display(part)
+            print("\n")            
+
+            update_part = solver.η * part
+
+            λ = solver.λ - update_part
     
         else
 
-            update_part = solver.η * H_t.^(-1) .* solver.grads[:,end]
+            H_t = H_t.^(-1)
+
+            println("H_t")
+            display(H_t)
+            print("\n")
+
+            part = H_t .* solver.grads[:,end]
+
+            println("Product")
+            display(part)
+            print("\n")   
+
+            update_part = solver.η * part
+
+            λ = solver.λ - update_part
 
         end
-        # Plus needed: constrain λ to be bigger, we are maximizing the dual function
-        λ = solver.λ - update_part
 
     else
 
-        λ = solver.λ + (solver.η * (solver.grads[:,end] ./ norm(solver.grads[:,end])^2))
+        part = solver.grads[:,end] ./ sqrt(norm(solver.grads[:,end]))
+        # part = solver.grads[:, end]
+
+        # println("Product 4")
+        # display(part)
+        # print("\n")  
+
+        update_part = solver.η * part
+
+        λ = solver.λ + update_part
 
     end
 
@@ -197,7 +285,9 @@ end
 
 #=
     Check the other stopping condition, i.e. when
+
         ∥ λ_t - λ_{t-1} ∥_2 ≤ ε 
+        
     whenever this condition is met we have reached an optimal value of multipliers λ,
     hence we met complementary slackness and we can stop
 =#
@@ -229,7 +319,7 @@ end
     Compute the subgradient of ϕ() at the point λ_{t-1}. The subgradient is taken by computing the left limit 
     and the right limit and then choosing the maximum norm of them 
 
-        s = argmax { ∥ s ∥ : s ∈ ∂ϕ(λ_{t-1}) }
+        s = argmin { ∥ s ∥ : s ∈ ∂ϕ(λ_{t-1}) }
 
     where the set of subgradient is the interval [a, b] where 
 
@@ -265,9 +355,9 @@ function get_subgrad(solver)
     a_norm = norm(a)
     b_norm = norm(b)
 
-    max_norm = max(a_norm, b_norm)
+    min_norm = min(a_norm, b_norm)
 
-    if max_norm == a_norm
+    if min_norm == a_norm
 
         return a
 
@@ -334,15 +424,60 @@ function isincreasing(solver)
 end
 
 
+function make_feasible(solver, mode)
+
+    x = fill(0.0, solver.n)
+
+    for set in solver.I_K
+
+        len = length(set)
+
+        if len == 1
+
+            x[set[1]] = 1.0
+
+        else
+
+            if mode == 1
+
+                x[set[1]] = solver.x[set[1]]
+
+                for i=2:1:len
+
+                    x[set[1]] += solver.x[set[i]]
+
+                    x[set[i]] = 0.0
+
+                end
+
+            else
+
+                for i in set
+
+                    x[i] = 1 / len
+
+                end
+
+            end
+
+        end
+
+    end
+
+    return x
+
+end
+
+
 #=
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
 =#  
-function my_ADAGRAD(solver, Full_mat)
+function my_ADAGRAD(solver)
 
     h = rand()
 
-    β = 0#rand()
+    β = 0 # or rand()
 
     α = 1 # or rand()
 
@@ -364,6 +499,9 @@ function my_ADAGRAD(solver, Full_mat)
     solver.iteration = 0
 
     ϕ_λ = dual_function(solver, solver.x, solver.λ)[1]
+
+    # solver.Off_the_shelf_primal = primal_function(solver)
+    # solver.Off_the_shelf_primal = dual_function(solver, optimal_x, solver.λ)
 
     current_gap = solver.Off_the_shelf_primal - ϕ_λ
 
@@ -449,7 +587,7 @@ function my_ADAGRAD(solver, Full_mat)
         
         # Solution of dual_function of problem 2.4 (see report)
         # Accumulate the squared summation into solver.s_t structure
-        solver.s_t += (subgrad.^2)
+        solver.s_t += subgrad
 
         # Create a copy of solver.s_t (avoid modifying the original one)
         s_t = solver.s_t 
@@ -476,6 +614,8 @@ function my_ADAGRAD(solver, Full_mat)
         =# 
         x_μ = \(solver.F, b)
 
+        # x_μ = cg(Full_mat, b)
+
         if any( isnan, x_μ )
             println("x_μ is nan!")
         end
@@ -487,11 +627,21 @@ function my_ADAGRAD(solver, Full_mat)
 
         solver.x, μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
+        # Make x feasible
+        # solver.x = make_feasible(solver, 1)
+
         #=
         Compute the update rule for the lagrangian multipliers λ: can use 
         one among the three showed, then soft threshold the result
         =#
         solver.λ = compute_update_rule(solver, H_t)
+
+        # solver.Off_the_shelf_primal = primal_function(solver, solver.x)
+        # solver.Off_the_shelf_primal = dual_function(solver, optimal_x, solver.λ)
+
+        # println("New best f(x^$(solver.iteration))")
+        # display(solver.Off_the_shelf_primal)
+        # print("\n")
         
         # Compute Lagrangian function value
         ϕ_λ = dual_function(solver, solver.x, solver.λ)[1]
@@ -559,17 +709,17 @@ function my_ADAGRAD(solver, Full_mat)
             break
         end
 
-        if solver.iteration % 2000 == 0
+        # if solver.iteration % 2000 == 0
 
-            if isincreasing(solver)
-                println("Gap is increasing")
-                # Log result of the current iteration
-                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] "INCREASING"
-                push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], "INCREASING" ])
-                break
-            end
+        #     if isincreasing(solver)
+        #         println("Gap is increasing")
+        #         # Log result of the current iteration
+        #         @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] "INCREASING"
+        #         push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], "INCREASING" ])
+        #         break
+        #     end
         
-        end
+        # end
 
         if current_gap > 0 && current_gap <= solver.τ
             println("Found optimal dual gap")
@@ -579,7 +729,7 @@ function my_ADAGRAD(solver, Full_mat)
             break   
         end
 
-        if (solver.iteration == 1) || (solver.iteration % 10 == 0)
+        if (solver.iteration == 1) || (solver.iteration % 1 == 0)
             # Log result of the current iteration
             @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
         end

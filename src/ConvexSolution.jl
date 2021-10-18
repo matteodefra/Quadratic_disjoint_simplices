@@ -8,12 +8,15 @@ using MAT
 
 mutable struct ConvexSol
     n :: Int
+    K :: Int
     x :: Variable
     A :: Array{Int64}
     Q :: Matrix{Float64}
     q :: Array{Float64}
     opt_val :: Float64
-    ConvexSol(n, x, A, Q, q) = new(n, x, A, Q, q)
+    μ :: Array{Float64}
+    λ :: Array{Float64}
+    ConvexSol(n, K, x, A, Q, q) = new(n, K, x, A, Q, q)
 end
 
 function compute_solution(convex_sol)
@@ -23,10 +26,7 @@ function compute_solution(convex_sol)
 
     problem = minimize( quadform(convex_sol.x, convex_sol.Q) + dot(convex_sol.q, convex_sol.x) )
 
-    # problem.constraints += [convex_sol.A * convex_sol.x == ones((convex_sol.n, 1))]
-    for row in eachrow(convex_sol.A)
-        problem.constraints += [row' * convex_sol.x == 1]
-    end
+    problem.constraints += [convex_sol.A * convex_sol.x == ones((convex_sol.K, 1))]
 
     problem.constraints += [convex_sol.x >= 0]
 
@@ -47,10 +47,10 @@ function compute_solution(convex_sol)
         print("\n")
 
         println("Dual variables constraints")
-        for constraint in problem.constraints
-            display(constraint.dual)
-            print("\n")
-        end
+        convex_sol.μ = problem.constraints[1].dual
+        display(convex_sol.μ)
+        convex_sol.λ = problem.constraints[2].dual
+        display(convex_sol.λ)
 
         convex_sol.opt_val = problem.optval[1]
 
@@ -66,7 +66,9 @@ function compute_solution(convex_sol)
         "Q" => convex_sol.Q,
         "q" => convex_sol.q, 
         "x" => evaluate(convex_sol.x),
-        "A" => convex_sol.A
+        "A" => convex_sol.A,
+        "mu" => convex_sol.μ,
+        "lambda" => convex_sol.λ
     ); compress = true)
 
     return convex_sol

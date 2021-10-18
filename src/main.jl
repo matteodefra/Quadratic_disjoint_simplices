@@ -24,7 +24,7 @@ function testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, 
 
         for stepsize in stepsizes
 
-            for update_rule in [4]
+            for update_rule in [1]
 
                 # Create three different struct to exploit the three update rule
                 sol = ADAGRAD_Solver.Solver(
@@ -251,14 +251,18 @@ end
 #------------------------------------------------------#
 #---------     Initialize all parameters    -----------#
 #------------------------------------------------------#
+print("Use stored .mat?[y/n] ")
+y = readline()
+
+y == "y" ? vars = matread("mat/structs.mat") : vars = nothing
 
 print("Input n value: ")
 n = readline()
-n = parse(Int64, n)
+y == "y" ? n = length(vars["q"]) : n = parse(Int64, n)
 
 print("Enter K value for n=$(n): ")
 K = readline()
-K = parse(Int64, K)
+y == "y" ? K = size(vars["A"],1) : K = parse(Int64, K)
 
 print("Deflection?[y/n] ")
 deflections = readline()
@@ -273,7 +277,7 @@ stepsizes = readline()
     3: Nonsummable diminishing              η = α / √t          with α > 0 
     4: Optimal                              η = f(x*) - ϕ(λ_t)/∥ g_k ∥_2
 =#
-stepsizes = stepsizes == "y" ? [0, 1, 2, 3] : [2]
+stepsizes = stepsizes == "y" ? [0, 1, 2, 3] : [3]
 
 println("Initializing random disjoint sets")
 
@@ -311,7 +315,7 @@ function initialize_sets(indexes, K, n)
 end
 
 # I_K contains all the I^k required to create the simplices constraints
-I_K = initialize_sets(indexes, K, n)
+y == "y" ? I_K = vars["I"] : I_K = initialize_sets(indexes, K, n)
 
 indexes = nothing
 
@@ -338,14 +342,14 @@ end
 # Create random matrix A_help
 A_help = rand(Float64, n, n)
 
-Q = A_help' * A_help
+y == "y" ? Q = vars["Q"] : Q = A_help' * A_help
 
 println("Q matrix:")
 display(Q)
 print("\n")
 
 # Initialize also random q vector 
-q = rand(Float64, (n,1))
+y == "y" ? q = vars["q"] : q = rand(Float64, (n,1))
 
 println("q vector:")
 display(q)
@@ -358,7 +362,7 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 4000
+max_iter = 100000
 
 # Initialize ε
 ε = 1e-8
@@ -366,7 +370,7 @@ max_iter = 4000
 # Initialize τ
 τ = 1e-4
 
-A = Utils.construct_A(K, n, I_K)
+y == "y" ? A = vars["A"] : A = Utils.construct_A(K, n, I_K)
 
 println("A constraint matrix:")
 display(A)
@@ -394,12 +398,11 @@ println("Factorization:")
 display(F)
 print("\n")
 
-# Full_mat = nothing
+Full_mat = nothing
 A_help = nothing
 GC.gc()
 
 x = (F \ vcat(λ - q, ones((K,1))))[1:n]
-# x = solve(F, vcat(λ - q, ones((K,1))))[1:n]
 
 println("Starting x:")
 display(x)
@@ -409,23 +412,33 @@ println("Starting λs:")
 display(λ)
 print("\n")
 
+matwrite("mat/structs.mat", Dict(
+        "Q" => Q,
+        "q" => q, 
+        "A" => A,
+        "I" => I_K
+    ); compress = true)
+
 #------------------------------------------------------#
 #-----    Use Convex.jl to compute primal solution   ----#
 #------------------------------------------------------#
 
-convex_sol = ConvexSolution.ConvexSol(
-    n,
-    Variable(n),
-    A,
-    Q,
-    q
-)
+# convex_sol = ConvexSolution.ConvexSol(
+#     n,
+#     K, 
+#     Variable(n),
+#     A,
+#     Q,
+#     q
+# )
 
-convex_sol = ConvexSolution.compute_solution(convex_sol)
+# convex_sol = ConvexSolution.compute_solution(convex_sol)
 
-println("Convex.jl optimal value:")
-display(convex_sol.opt_val)
-print("\n")
+# println("Convex.jl optimal value:")
+# display(convex_sol.opt_val)
+# print("\n")
+
+yalmip_optval = 93592.0938
 
 testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, 
-        max_iter, ε, τ, stepsizes, F, A, convex_sol.opt_val)
+        max_iter, ε, τ, stepsizes, F, A, yalmip_optval)

@@ -13,7 +13,8 @@ export Solver
 Create struct solver to approach the problem:
     n::Int                                      Identify the problem dimension
     iteration::Int                              Keep track of the current iteration
-    λ::Array{Float64}                           Store the current value of the lagrangian multipliers      
+    λ::Array{Float64}                           Store the current value of the lagrangian multipliers    
+    μ::Array{Float64}                           Current value of lagrangian multipliers
     K::Int                                      Identify the number of simplices
     I_K::Vector{Array{Int64}}                   Store the indexes of the corresponding simplices
     x::Array{Float64}                           Store the current value of the lagrangian primal iterates
@@ -52,6 +53,7 @@ mutable struct Solver
     n :: Int
     iteration :: Int
     λ :: Array{Float64}
+    μ :: Array{Float64}
     K :: Int
     I_K :: Vector{Array{Int64}}
     x :: Array{Float64}
@@ -90,12 +92,11 @@ end
 #=
     Compute the dual function value given the minimum x found and the value of λ
         
-        ϕ(λ) = x' Q x + q' x - λ' x
+        ϕ(λ) = x' Q x + q' x - λ' x 
 
 =#
 function dual_function(solver, previous_x, previous_λ)
-    return (previous_x ⋅ (solver.Q * previous_x)) + (solver.q ⋅ previous_x) - (previous_λ ⋅ previous_x)
-    # return (previous_x' * solver.Q * previous_x) .+ (solver.q' * previous_x) .- (previous_λ' * previous_x)
+    return (previous_x ⋅ (solver.Q * previous_x)) + (solver.q ⋅ previous_x) + (previous_λ ⋅ previous_x) #+ ( solver.μ ⋅ ( (solver.A * previous_x) - ones((solver.K,1)) ) )
 end
 
 
@@ -161,7 +162,7 @@ function compute_update_rule(solver, H_t)
         # replace!(x -> x < 0 ? abs(x) : x, G_t)
 
         # Apply exponentiation and square root
-        G_t = 1 ./ G_t
+        # G_t = 1 ./ G_t
         G_t = sqrt.(G_t)
 
         # println("Matrix G_t")
@@ -174,13 +175,14 @@ function compute_update_rule(solver, H_t)
             # display(solver.d_i)
             # print("\n")
 
-            part = G_t .* solver.d_i
+            η = solver.η ./ G_t
+            part = η .* solver.d_i
 
             println("Product")
             display(part)
             print("\n")
             
-            λ = solver.λ + (solver.η * part)
+            λ = solver.λ + part
         
         else
 
@@ -188,13 +190,14 @@ function compute_update_rule(solver, H_t)
             # display(solver.grads[:,end])
             # print("\n")
 
-            part = G_t .* solver.grads[:, end]
+            η = solver.η ./ G_t
+            part = η .* solver.grads[:, end]
 
             # println("Product")
             # display(part)
             # print("\n")
 
-            λ = solver.λ + (solver.η * part)
+            λ = solver.λ + part
         
         end
 
@@ -207,55 +210,46 @@ function compute_update_rule(solver, H_t)
         # display(avg_gradient_copy)
         # print("\n")
 
-        H_t = H_t.^(-1)
-
-        # println("H_t")
-        # display(H_t)
-        # print("\n")
-
-        part = - H_t .* avg_gradient_copy
+        η = solver.η * solver.iteration 
+        η = η ./ H_t
 
         # println("Product")
         # display(part)
         # print("\n")
 
-        λ = solver.iteration * solver.η * part
+        λ = η .* avg_gradient_copy
 
     elseif solver.update_formula == 3 
 
         if solver.deflection
 
-            H_t = H_t.^(-1)
+            η = solver.η ./ H_t
 
-            println("H_t")
-            display(H_t)
-            print("\n")
+            # println("H_t")
+            # display(H_t)
+            # print("\n")
 
-            part = H_t .* solver.d_i 
+            update_part = η .* solver.d_i
 
-            println("Product")
-            display(part)
-            print("\n")            
-
-            update_part = solver.η * part
+            # println("Product")
+            # display(part)
+            # print("\n")            
 
             λ = solver.λ - update_part
     
         else
 
-            H_t = H_t.^(-1)
+            η = solver.η ./ H_t
 
-            println("H_t")
-            display(H_t)
-            print("\n")
+            # println("H_t")
+            # display(H_t)
+            # print("\n")
 
-            part = H_t .* solver.grads[:,end]
+            update_part = η .* solver.grads[:,end]
 
-            println("Product")
-            display(part)
-            print("\n")   
-
-            update_part = solver.η * part
+            # println("Product")
+            # display(part)
+            # print("\n")   
 
             λ = solver.λ - update_part
 
@@ -263,8 +257,8 @@ function compute_update_rule(solver, H_t)
 
     else
 
-        part = solver.grads[:,end] ./ sqrt(norm(solver.grads[:,end]))
-        # part = solver.grads[:, end]
+        # part = solver.grads[:,end] ./ sqrt(norm(solver.grads[:,end]))
+        part = solver.grads[:, end]
 
         # println("Product 4")
         # display(part)
@@ -304,9 +298,9 @@ function check_λ_norm(solver, current_λ, previous_λ)
         # Log result of the last iteration
         @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%s \t\t%1.5e \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
 
-        println("\nOptimal distance between λ's found:")
-        display(distance)
-        print("\n")
+        # println("\nOptimal distance between λ's found:")
+        # display(distance)
+        # print("\n")
         return true
     end
 
@@ -316,7 +310,7 @@ end
 
 
 #=
-    Compute the subgradient of ϕ() at the point λ_{t-1}. The subgradient is taken by computing the left limit 
+    Compute the subgradient of -ϕ() at the point λ_{t-1}. The subgradient is taken by computing the left limit 
     and the right limit and then choosing the maximum norm of them 
 
         s = argmin { ∥ s ∥ : s ∈ ∂ϕ(λ_{t-1}) }
@@ -348,7 +342,7 @@ function get_subgrad(solver)
 
     if difference <= 1e-12
         # The gradient exists and coincide with the normal derivation of ϕ(λ_{t-1})
-        return - solver.x
+        return solver.x
     end
 
     # Otherwise compute the maximum norm between a and b
@@ -477,7 +471,7 @@ function my_ADAGRAD(solver)
 
     h = rand()
 
-    β = 0 # or rand()
+    β = 1 # or rand()
 
     α = 1 # or rand()
 
@@ -525,25 +519,6 @@ function my_ADAGRAD(solver)
         # Save iteration
         push!(solver.num_iterations, solver.iteration)
 
-        # Modify η in DSS way
-        if solver.stepsize_choice == 0
-
-            solver.η = h
-
-        elseif solver.stepsize_choice == 1
-
-            solver.η = isempty( solver.x_distances ) ? 1 : (solver.x_distances[end] / norm( solver.grads[:, end] ))
-
-        elseif solver.stepsize_choice == 2
-
-            solver.η = α / (β + solver.iteration)
-
-        else
-
-            solver.η = α / sqrt(solver.iteration)
-
-        end
-
         # Assign previous_λ
         previous_λ = solver.λ
 
@@ -584,6 +559,25 @@ function my_ADAGRAD(solver)
         # Store subgradient in matrix
         # solver.grads = [solver.grads subgrad]
         solver.grads = [solver.grads subgrad]
+
+        # Modify η in DSS way
+        if solver.stepsize_choice == 0
+
+            solver.η = h
+
+        elseif solver.stepsize_choice == 1
+
+            solver.η = h / norm( solver.grads[:, end] )
+
+        elseif solver.stepsize_choice == 2
+
+            solver.η = α / (β + solver.iteration)
+
+        else
+
+            solver.η = α / sqrt(solver.iteration)
+
+        end
         
         # Solution of dual_function of problem 2.4 (see report)
         # Accumulate the squared summation into solver.s_t structure
@@ -625,7 +619,7 @@ function my_ADAGRAD(solver)
         # println("Diff between x's")
         # display(norm(x_μ - x_μ2))
 
-        solver.x, μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
+        solver.x, solver.μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
         # Make x feasible
         # solver.x = make_feasible(solver, 1)
@@ -706,7 +700,7 @@ function my_ADAGRAD(solver)
         if check_λ_norm(solver, solver.λ, previous_λ)
             # Add last row
             push!(df, [ solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
-            break
+            # break
         end
 
         # if solver.iteration % 2000 == 0

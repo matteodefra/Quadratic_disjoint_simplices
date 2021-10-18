@@ -13,7 +13,7 @@ using .Utils
 using .ADAGRAD_Solver
 using .ConvexSolution
 
-function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
+function testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
     #------------------------------------------------------#
     #----------     Create problem structs     ------------#
     #------------------------------------------------------#
@@ -24,11 +24,11 @@ function testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, max_iter, ε, τ, 
 
         for stepsize in stepsizes
 
-            for update_rule in [1]
+            for update_rule in [4]
 
                 # Create three different struct to exploit the three update rule
                 sol = ADAGRAD_Solver.Solver(
-                    n, 0, λ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                    n, 0, λ, μ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
                     fill(0.0, n), # G_t 
                     fill(0.0, n), # s_t
                     δ .* Iden, # H_t
@@ -332,6 +332,9 @@ end
 # Initialize λ iterates to ones
 λ = ones((n,1))
 
+# Initialize μ iterates to zeros
+μ = zeros((K,1))
+
 # Create random matrix A_help
 A_help = rand(Float64, n, n)
 
@@ -355,7 +358,7 @@ print("\n")
 δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 5000
+max_iter = 4000
 
 # Initialize ε
 ε = 1e-8
@@ -424,5 +427,5 @@ println("Convex.jl optimal value:")
 display(convex_sol.opt_val)
 print("\n")
 
-testing(n, K, deflections, Q, q, λ, x, I_K, η, δ, 
+testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, 
         max_iter, ε, τ, stepsizes, F, A, convex_sol.opt_val)

@@ -1,6 +1,7 @@
 module Utils
 
 using LinearAlgebra
+using SparseArrays
 
 #= 
 Create matrix of KKT conditions
@@ -17,7 +18,7 @@ function construct_full_matrix(Q, A, K)
 
     Full_mat = hcat(Full_mat, Right_side)
 
-    return Full_mat
+    return SparseMatrixCSC(Symmetric(Full_mat))
 end
 
 
@@ -34,7 +35,7 @@ function construct_A(K, n, I_K)
         end
         A[k,:] = a_k
     end 
-    return A
+    return SparseMatrixCSC(A)
 end
 
 

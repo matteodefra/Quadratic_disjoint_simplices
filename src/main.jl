@@ -8,7 +8,6 @@ using Plots
 using Colors
 using Convex
 using MAT
-using SparseArrays
 using .Utils
 using .ADAGRAD_Solver
 using .ConvexSolution
@@ -40,8 +39,6 @@ function testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, 
                     λ, # best_λ
                     Vector{Float64}(), # num_iterations
                     Vector{Float64}(), # dual_values
-                    Array{Float64}(undef, n, 0), # x_values
-                    Array{Float64}(undef, n, 0), # λ_values
                     Vector{Float64}(), # λ_distances
                     Vector{Float64}(), # x_distances
                     Vector{Float64}(), # timings
@@ -100,143 +97,143 @@ function testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, 
 
                 # Plots.theme(:bright)
 
-                gr()
+                # gr()
 
-                if sol.iteration == 1
-                    @goto noplot
-                end
+                # if sol.iteration == 1
+                #     @goto noplot
+                # end
 
-                y = ones(3) 
-                title = Plots.scatter(y, marker=0,markeralpha=0, annotations=(2, y[2], Plots.text("Update rule $(sol.update_formula), n=$(sol.n) and K=$(sol.K)", pointsize = 12)), axis=false, fillcolor=:white, grid=false, background_color=:white,background_color_subplot=:white, framestyle=:none, leg=false,size=(200,100),foreground_color=:white)
+                # y = ones(3) 
+                # title = Plots.scatter(y, marker=0,markeralpha=0, annotations=(2, y[2], Plots.text("Update rule $(sol.update_formula), n=$(sol.n) and K=$(sol.K)", pointsize = 12)), axis=false, fillcolor=:white, grid=false, background_color=:white,background_color_subplot=:white, framestyle=:none, leg=false,size=(200,100),foreground_color=:white)
 
-                ticks = []
-                ticks_string = []
+                # ticks = []
+                # ticks_string = []
 
-                if ( !isempty(sol.dual_values) )
-                    ticks = range( minimum(sol.dual_values), maximum(sol.dual_values), length = 5 )
-                    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
-                end
+                # if ( !isempty(sol.dual_values) )
+                #     ticks = range( minimum(sol.dual_values), maximum(sol.dual_values), length = 5 )
+                #     ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+                # end
 
-                plt = plot( sol.num_iterations, 
-                            sol.dual_values, 
-                            titlefontsize = 12,
-                            label = "Dual", 
-                            lw = 2,
-                            dpi = 360,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            bg_inside = :whitesmoke,
-                            minorgrid = true,
-                            minorgridalpha = 1,
-                            foreground_color_grid = :white,
-                            foreground_color_minor_grid = :white,
-                            gridlinewidth = 1,
-                            tickdirection = :out,
-                            xscale = :log10,
-                            minorticks = 5,
-                            showaxis = :hide,
-                            legend = :bottomright,
-                            isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
-                            tickfontsize = 4,
-                            guidefontsize = 6,
-                            formatter = :plain )
-                xlabel!("Iterations")
-                ylabel!("Dual value")
+                # plt = plot( sol.num_iterations, 
+                #             sol.dual_values, 
+                #             titlefontsize = 12,
+                #             label = "Dual", 
+                #             lw = 2,
+                #             dpi = 360,
+                #             linealpha = 0.5,
+                #             linecolor = :green,
+                #             bg_inside = :whitesmoke,
+                #             minorgrid = true,
+                #             minorgridalpha = 1,
+                #             foreground_color_grid = :white,
+                #             foreground_color_minor_grid = :white,
+                #             gridlinewidth = 1,
+                #             tickdirection = :out,
+                #             xscale = :log10,
+                #             minorticks = 5,
+                #             showaxis = :hide,
+                #             legend = :bottomright,
+                #             isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
+                #             tickfontsize = 4,
+                #             guidefontsize = 6,
+                #             formatter = :plain )
+                # xlabel!("Iterations")
+                # ylabel!("Dual value")
 
-                ticks = []
-                ticks_string = []
+                # ticks = []
+                # ticks_string = []
 
-                if ( !isempty(sol.gaps) )
-                    ticks = range( minimum(sol.gaps), maximum(sol.gaps), length = 5 )
-                    ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
-                end
+                # if ( !isempty(sol.gaps) )
+                #     ticks = range( minimum(sol.gaps), maximum(sol.gaps), length = 5 )
+                #     ticks_string = [ string(round(el, digits = 2)) for el in ticks ]
+                # end
 
                     
-                plt2 = plot(sol.num_iterations, 
-                            sol.gaps, 
-                            titlefontsize = 12,
-                            label = "Gap", 
-                            lw = 2,
-                            dpi = 360,
-                            xscale = :log10,
-                            # yscale = :log10,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            bg_inside = :whitesmoke,
-                            minorgrid = true,
-                            minorgridalpha = 1,
-                            foreground_color_grid = :white,
-                            foreground_color_minor_grid = :white,
-                            gridlinewidth = 1,
-                            tickdirection = :out,
-                            minorticks = 5,
-                            showaxis = :hide,
-                            isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
-                            tickfontsize = 4,
-                            guidefontsize = 6,
-                            formatter = :scientific )
-                xlabel!("Iterations")
-                ylabel!("Gap f(x*)-ϕ(λ)")
+                # plt2 = plot(sol.num_iterations, 
+                #             sol.gaps, 
+                #             titlefontsize = 12,
+                #             label = "Gap", 
+                #             lw = 2,
+                #             dpi = 360,
+                #             xscale = :log10,
+                #             # yscale = :log10,
+                #             linealpha = 0.5,
+                #             linecolor = :green,
+                #             bg_inside = :whitesmoke,
+                #             minorgrid = true,
+                #             minorgridalpha = 1,
+                #             foreground_color_grid = :white,
+                #             foreground_color_minor_grid = :white,
+                #             gridlinewidth = 1,
+                #             tickdirection = :out,
+                #             minorticks = 5,
+                #             showaxis = :hide,
+                #             isempty(ticks) ? yticks = () : yticks = ( ticks, ticks_string ),
+                #             tickfontsize = 4,
+                #             guidefontsize = 6,
+                #             formatter = :scientific )
+                # xlabel!("Iterations")
+                # ylabel!("Gap f(x*)-ϕ(λ)")
 
-                plt3 = plot(sol.num_iterations, 
-                            replace!(val -> val <= 0 ? 1e-8 : val, sol.λ_distances), 
-                            titlefontsize = 12,
-                            label = "Residual λ", 
-                            lw = 2, 
-                            dpi = 360,
-                            xscale = :log10,
-                            yscale = :log10,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            bg_inside = :whitesmoke,
-                            minorgrid = true,
-                            minorgridalpha = 1,
-                            foreground_color_grid = :white,
-                            foreground_color_minor_grid = :white,
-                            gridlinewidth = 1,
-                            tickdirection = :out,
-                            minorticks = 5,
-                            showaxis = :hide,
-                            tickfontsize = 4,
-                            guidefontsize = 6,
-                            formatter = :plain )
-                xlabel!("Iterations")
-                ylabel!("Residual λ")
+                # plt3 = plot(sol.num_iterations, 
+                #             replace!(val -> val <= 0 ? 1e-8 : val, sol.λ_distances), 
+                #             titlefontsize = 12,
+                #             label = "Residual λ", 
+                #             lw = 2, 
+                #             dpi = 360,
+                #             xscale = :log10,
+                #             yscale = :log10,
+                #             linealpha = 0.5,
+                #             linecolor = :green,
+                #             bg_inside = :whitesmoke,
+                #             minorgrid = true,
+                #             minorgridalpha = 1,
+                #             foreground_color_grid = :white,
+                #             foreground_color_minor_grid = :white,
+                #             gridlinewidth = 1,
+                #             tickdirection = :out,
+                #             minorticks = 5,
+                #             showaxis = :hide,
+                #             tickfontsize = 4,
+                #             guidefontsize = 6,
+                #             formatter = :plain )
+                # xlabel!("Iterations")
+                # ylabel!("Residual λ")
 
-                plt4 = plot(sol.num_iterations, 
-                            sol.x_distances, 
-                            titlefontsize = 12,
-                            label = "Residual x", 
-                            lw = 2, 
-                            dpi = 360,
-                            xscale = :log10,
-                            yscale = :log10,
-                            linealpha = 0.5,
-                            linecolor = :green,
-                            bg_inside = :whitesmoke,
-                            minorgrid = true,
-                            minorgridalpha = 1,
-                            foreground_color_grid = :white,
-                            foreground_color_minor_grid = :white,
-                            gridlinewidth = 1,
-                            tickdirection = :out,
-                            minorticks = 5,
-                            showaxis = :hide,
-                            tickfontsize = 4,
-                            guidefontsize = 6,
-                            formatter = :plain )
-                xlabel!("Iterations")
-                ylabel!("Residual x")
+                # plt4 = plot(sol.num_iterations, 
+                #             sol.x_distances, 
+                #             titlefontsize = 12,
+                #             label = "Residual x", 
+                #             lw = 2, 
+                #             dpi = 360,
+                #             xscale = :log10,
+                #             yscale = :log10,
+                #             linealpha = 0.5,
+                #             linecolor = :green,
+                #             bg_inside = :whitesmoke,
+                #             minorgrid = true,
+                #             minorgridalpha = 1,
+                #             foreground_color_grid = :white,
+                #             foreground_color_minor_grid = :white,
+                #             gridlinewidth = 1,
+                #             tickdirection = :out,
+                #             minorticks = 5,
+                #             showaxis = :hide,
+                #             tickfontsize = 4,
+                #             guidefontsize = 6,
+                #             formatter = :plain )
+                # xlabel!("Iterations")
+                # ylabel!("Residual x")
                
-                # combine the 'title' plot with your real plots
-                total_plot = Plots.plot(
-                    title,
-                    Plots.plot(plt, plt2, plt3, plt4, layout = 4),
-                    layout=grid(2,1,heights=[0.05,0.95])
-                )
-                savefig(total_plot, "plots/Rule=$(sol.update_formula)_n=$(sol.n)_K=$(sol.K)_defl=$(sol.deflection)_step=$(sol.stepsize_choice).png")
+                # # combine the 'title' plot with your real plots
+                # total_plot = Plots.plot(
+                #     title,
+                #     Plots.plot(plt, plt2, plt3, plt4, layout = 4),
+                #     layout=grid(2,1,heights=[0.05,0.95])
+                # )
+                # savefig(total_plot, "plots/Rule=$(sol.update_formula)_n=$(sol.n)_K=$(sol.K)_defl=$(sol.deflection)_step=$(sol.stepsize_choice).png")
 
-                @label noplot
+                # @label noplot
 
             end
 
@@ -252,37 +249,35 @@ end
 #---------     Initialize all parameters    -----------#
 #------------------------------------------------------#
 print("Use stored .mat?[y/n] ")
-y = readline()
+const y = readline()
 
-y == "y" ? vars = matread("mat/structs.mat") : vars = nothing
+vars = y == "y" ? matread("mat/structs.mat") : []
 
 print("Input n value: ")
-n = readline()
-y == "y" ? n = length(vars["q"]) : n = parse(Int64, n)
+n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
 
 print("Enter K value for n=$(n): ")
-K = readline()
-y == "y" ? K = size(vars["A"],1) : K = parse(Int64, K)
+K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
 
 print("Deflection?[y/n] ")
-deflections = readline()
-deflections = deflections == "y" ? [true, false] : [false]
+# deflection = readline()
+deflections = isequal("y",readline()) ? [true, false] : [false]
 
 print("Use different stepsize choices?[y/n] ")
-stepsizes = readline()
+# stepsizes = readline()
 #=
     0: Constant step size                   η = h               with h > 0
     1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
     2: Square summable but not summable     η = α / (b + t)     with α > 0 and b ≥ 0
     3: Nonsummable diminishing              η = α / √t          with α > 0 
-    4: Optimal                              η = f(x*) - ϕ(λ_t)/∥ g_k ∥_2
+    4: Optimal                              η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
 =#
-stepsizes = stepsizes == "y" ? [0, 1, 2, 3] : [3]
+stepsizes = isequal("y",readline()) ? [0, 1, 2, 3, 4] : [2]
 
 println("Initializing random disjoint sets")
 
 # Indexes to access the different x_i
-indexes = collect(1:1:n)
+const indexes = collect(1:1:n)
 
 # Utility function to create the different sets I^k given the number of sets K
 function initialize_sets(indexes, K, n)
@@ -315,70 +310,66 @@ function initialize_sets(indexes, K, n)
 end
 
 # I_K contains all the I^k required to create the simplices constraints
-y == "y" ? I_K = vars["I"] : I_K = initialize_sets(indexes, K, n)
-
-indexes = nothing
+I_K = y == "y" ? vars["I"] : initialize_sets(indexes, K, n)
 
 println("Set of I_K arrays:")
 display(I_K)
 print("\n")
 
 # Initialize x iterates to feasible solution
-x = ones((n,1))
+# const x = ones((n,1))
 
-# Feasible x
-for set in I_K
-    for val in set
-        x[val] = 1/length(set)
-    end
-end
+# # Feasible x
+# for set in I_K
+#     for val in set
+#         x[val] = 1/length(set)
+#     end
+# end
 
 # Initialize λ iterates to ones
-λ = ones((n,1))
+const λ = ones((n,1))
 
 # Initialize μ iterates to zeros
-μ = zeros((K,1))
+const μ = zeros((K,1))
 
 # Create random matrix A_help
-A_help = rand(Float64, n, n)
+const A_help = rand(Float64, n, n)
 
-y == "y" ? Q = vars["Q"] : Q = A_help' * A_help
+Q = y == "y" ? vars["Q"] : A_help' * A_help
 
 println("Q matrix:")
 display(Q)
 print("\n")
 
 # Initialize also random q vector 
-y == "y" ? q = vars["q"] : q = rand(Float64, (n,1))
+q = y == "y" ? vars["q"] : rand(Float64, (n,1))
 
 println("q vector:")
 display(q)
 print("\n")
 
 # Initialize η
-η = 1
+const η = 1
 
 # Initialize δ
-δ = abs(rand())
+const δ = abs(rand())
 
 # Initialize max_iter
-max_iter = 100000
+const max_iter = 100000
 
 # Initialize ε
-ε = 1e-8
+const ε = 1e-14
 
 # Initialize τ
-τ = 1e-4
+const τ = 1e-8
 
-y == "y" ? A = vars["A"] : A = Utils.construct_A(K, n, I_K)
+A = y == "y" ? vars["A"] : Utils.construct_A(K, n, I_K)
 
 println("A constraint matrix:")
 display(A)
 print("\n")
 
-Full_mat = Utils.construct_full_matrix(Q, A, K)
-
-Full_mat =  SparseMatrixCSC(Symmetric(Full_mat))
+const Full_mat = Utils.construct_full_matrix(Q, A, K)
 
 println("Full matrix:")
 display(Full_mat)
@@ -391,18 +382,16 @@ print("\n")
         Bunch-Kaufman ( if Q=Q^T )
         pivoted LU ( otherwise )
 =#
-F = lu(Full_mat)
+const F = lu(Full_mat)
 # F = cholesky(Full_mat)
 
-println("Factorization:")
-display(F)
-print("\n")
+# println("Factorization:")
+# display(F)
+# print("\n")
 
-Full_mat = nothing
-A_help = nothing
 GC.gc()
 
-x = (F \ vcat(λ - q, ones((K,1))))[1:n]
+const x = (F \ vcat(λ - q, ones((K,1))))[1:n]
 
 println("Starting x:")
 display(x)
@@ -438,7 +427,8 @@ matwrite("mat/structs.mat", Dict(
 # display(convex_sol.opt_val)
 # print("\n")
 
-yalmip_optval = 93592.0938
+# For the current structs.mat
+# const yalmip_optval = 93592.0938
 
-testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, 
-        max_iter, ε, τ, stepsizes, F, A, yalmip_optval)
+# testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, 
+#         max_iter, ε, τ, stepsizes, F, A, yalmip_optval)

@@ -17,3 +17,4 @@ Try to change the value of \delta -> using standard \delta=1, one of the possibl
 n=5000, K=10, Rule 3
 In rule 3 I notice how changing the value of \delta impact the rate of updates in the convergence. Using a > 1 \delta suddenly cause big steps. Instead with a low value of it we have a more smooth optimization.
 Also in this case if we use an high \delta we make big steps, the algorithm seems prone to diverge into the negative gap. To mitigate this phenomena, the subgrad direction is changed when this happens
+\delta = 1e-2 and h = 100 with constant stepsize

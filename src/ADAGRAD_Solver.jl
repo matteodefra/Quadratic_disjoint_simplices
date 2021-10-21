@@ -5,7 +5,6 @@ using LinearAlgebra
 using Printf
 using DataFrames
 using CSV
-using IterativeSolvers
 
 export Solver
 
@@ -171,11 +170,13 @@ function compute_update_rule(solver, H_t)
         # Average the row sum of the gradient based on the current iteration in a new variable
         avg_gradient_copy = map(/, solver.s_t, solver.iteration)
 
-        scalar = solver.η * solver.iteration
-
-        λ .= map(/, avg_gradient_copy, H_t)
+        scalar = - solver.η * solver.iteration
 
         BLAS.scal!(solver.n, scalar, λ, 1)
+
+        λ .= map(/, λ, H_t)
+
+        λ .= map(*, λ, avg_gradient_copy)
 
     elseif solver.update_formula == 3 
 
@@ -352,11 +353,11 @@ end
 =#  
 function my_ADAGRAD(solver)
 
-    h = rand()
+    h = 100 # rand()
 
     β = 1 # or rand()
 
-    α = 0.8 # or rand()
+    α = 1 # or rand()
 
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
@@ -547,7 +548,7 @@ function my_ADAGRAD(solver)
             solver.best_λ .= solver.λ
         end
 
-        if current_gap > 0 && current_gap < 1e4
+        if current_gap > 0 && current_gap < 1e2
             solver.stepsize_choice = 4
         end
 
@@ -564,9 +565,14 @@ function my_ADAGRAD(solver)
         if current_gap > 0 && current_gap <= solver.τ
             println("Found optimal dual gap")
             # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] "OPT"
-            push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], "OPT" ])
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+            push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
             break   
+        end
+
+        if current_gap < -1e5
+            # Gap is diverging, reset λ
+            solver.λ = ones((solver.n,1))
         end
 
         if (solver.iteration == 1) || (solver.iteration % 10 == 0)

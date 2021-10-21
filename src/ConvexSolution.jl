@@ -2,8 +2,6 @@ module ConvexSolution
 
 using Convex
 import SCS
-# import ECOS
-import COSMO
 using MAT
 
 mutable struct ConvexSol

@@ -18,7 +18,7 @@ function construct_full_matrix(Q, A, K)
 
     Full_mat = hcat(Full_mat, Right_side)
 
-    return SparseMatrixCSC(Symmetric(Full_mat))
+    return Symmetric(Full_mat)
 end
 
 
@@ -35,7 +35,7 @@ function construct_A(K, n, I_K)
         end
         A[k,:] = a_k
     end 
-    return SparseMatrixCSC(A)
+    return A
 end
 
 

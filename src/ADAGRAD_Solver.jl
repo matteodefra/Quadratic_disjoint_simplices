@@ -9,42 +9,42 @@ using CSV
 export Solver
 
 #= 
-Create struct solver to approach the problem:
-    n::Int                                      Identify the problem dimension
-    iteration::Int                              Keep track of the current iteration
-    λ::Array{Float64}                           Store the current value of the lagrangian multipliers    
-    μ::Array{Float64}                           Current value of lagrangian multipliers
-    K::Int                                      Identify the number of simplices
-    I_K::Vector{Array{Int64}}                   Store the indexes of the corresponding simplices
-    x::Array{Float64}                           Store the current value of the lagrangian primal iterates
-    grads::Array{Float64}                       Keep track of the subgradient at each iteration 
-    G_t::Array{Float64}                         Cumulative sum of the outer product of the gradients, keep only diagonal
-    s_t::Array{Float64}                         Keep track of the solution of the problem 2.4 (see report)
-    H_t::Array{Float64}                         Keep the diagonal δ*ones() vector in the struct, and add the s_t iteratively
-    d_i::Array{Float64}                         Keep track of the current deflected direction
-    deflection::Bool                            Whether to use deflection or not 
-    Q::Matrix{Float64}                          Q matrix of the function problem
-    q::Array{Float64}                           q vector of the function problem
-    η::Float64                                  Stepsize modified at each iteration
-    δ::Float64                                  Random quantity used to compute H_t matrix
-    max_iter::Int                               Maximum number of iterations allowed
-    ε::Float64                                  Tolerance on the norm of the λ iterates
-    τ::Float64                                  Tolerance on the dual gap 
-    best_dual::Float64                          Keep track of the best dual value found
-    best_iteration::Int64                       Keep track of the best iteration
-    best_x::Array{Float64}                      Keep track of the best value of x found
-    best_λ::Array{Float64}                      Keep track of the best value of λ found 
-    num_iterations::Vector{Float64}             Store each iteration
-    dual_values::Vector{Float64}                Store each lagrangian evaluation 
-    λ_distances::Array{Float64}                 Store each distance between the current λ and the previous one 
-    x_distances::Array{Float64}                 Store each distance between the current x and the previous one  
-    timings::Vector{Float64}                    Store timing execution for each iteration
-    gaps::Vector{Float64}                       Store dual gap found at each iteration
-    update_formula::Int                         Update rule to be used  
-    stepsize_choice::Int                        Stepsize choice to use
-    F::Any                                      Save the factorization of Full_mat
-    A::Array{Int64}                             Save the constraint matrix A 
-    Off_the_shelf_primal::Float64               f(x*) computed with an off-the-shelf solver    
+    Create struct solver to approach the problem:
+        n :: Int                                      Identify the problem dimension
+        iteration :: Int                              Keep track of the current iteration
+        λ :: Array{Float64}                           Store the current value of the lagrangian multipliers    
+        μ :: Array{Float64}                           Current value of lagrangian multipliers
+        K :: Int                                      Identify the number of simplices
+        I_K :: Vector{Array{Int64}}                   Store the indexes of the corresponding simplices
+        x :: Array{Float64}                           Store the current value of the lagrangian primal iterates
+        grads :: Array{Float64}                       Keep track of the subgradient at each iteration 
+        G_t :: Array{Float64}                         Cumulative sum of the outer product of the gradients, keep only diagonal
+        s_t :: Array{Float64}                         Keep track of the solution of the problem 2.4 (see report)
+        H_t :: Array{Float64}                         Keep the diagonal δ*ones() vector in the struct, and add the s_t iteratively
+        d_i :: Array{Float64}                         Keep track of the current deflected direction
+        deflection :: Bool                            Whether to use deflection or not 
+        Q :: Matrix{Float64}                          Q matrix of the function problem
+        q :: Array{Float64}                           q vector of the function problem
+        η :: Float64                                  Stepsize modified at each iteration
+        δ :: Float64                                  Random quantity used to compute H_t matrix
+        max_iter :: Int                               Maximum number of iterations allowed
+        ε :: Float64                                  Tolerance on the norm of the λ iterates
+        τ :: Float64                                  Tolerance on the dual gap 
+        best_dual :: Float64                          Keep track of the best dual value found
+        best_iteration :: Int64                       Keep track of the best iteration
+        best_x :: Array{Float64}                      Keep track of the best value of x found
+        best_λ :: Array{Float64}                      Keep track of the best value of λ found 
+        num_iterations :: Vector{Float64}             Store each iteration
+        dual_values :: Vector{Float64}                Store each lagrangian evaluation 
+        λ_distances :: Array{Float64}                 Store each distance between the current λ and the previous one 
+        x_distances :: Array{Float64}                 Store each distance between the current x and the previous one  
+        timings :: Vector{Float64}                    Store timing execution for each iteration
+        gaps :: Vector{Float64}                       Store dual gap found at each iteration
+        update_formula :: Int                         Update rule to be used  
+        stepsize_choice :: Int                        Stepsize choice to use
+        F :: Any                                      Save the factorization of Full_mat
+        A :: Array{Int64}                             Save the constraint matrix A 
+        Off_the_shelf_primal :: Float64               f(x*) computed with an off-the-shelf solver    
 =#
 mutable struct Solver
     n :: Int
@@ -92,18 +92,16 @@ end
 =#
 function dual_function(solver, previous_x, previous_λ)
     return BLAS.dot(solver.n, previous_x, 1, BLAS.symv('U' ,solver.Q, previous_x),1) + BLAS.dot(solver.n, solver.q, 1, previous_x, 1) + BLAS.dot(solver.n, previous_λ, 1, previous_x, 1)
-    # return (previous_x ⋅ (solver.Q * previous_x)) + (solver.q ⋅ previous_x) + (previous_λ ⋅ previous_x) + ( solver.μ ⋅ ( (solver.A * previous_x) - ones((solver.K,1)) ) )
 end
 
 #=
-    Compute the prima; function value given the minimum x found
+    Compute the primal function value given the minimum x found
         
         f(x) = x' Q x + q' x
 
 =#
 function primal_function(solver, feasible_x) 
     return BLAS.dot(solver.n, feasible_x, 1, BLAS.symv('U' ,solver.Q, feasible_x),1) + BLAS.dot(solver.n, solver.q, 1, feasible_x, 1) 
-    # return (feasible_x ⋅ (solver.Q * feasible_x)) + (solver.q ⋅ feasible_x)
 end
 
 
@@ -113,21 +111,24 @@ end
     
     The first update rule is a general update rule given by:
 
-        λ_t = λ_{t-1} + η \diag(G_t)^{-1/2} g_t
+        λ_t = λ_{t-1} + η diag(G_t)^{-1/2} g_t
 
     where G_t is the full outer product of all the stored subgradient
 
     The second update rule is:
 
-        λ_t = - H_{t-1}^{-1} t η g_t 
+        λ_t = - H_{t-1}^{-1} t η ̅g_t
+        
+    where ̅g_t is the average of the gradients at step t
 
     The third one employ the following:
 
-        λ_t = λ_{t-1} - η H_{t-1}^{-1} g_t
+        λ_t = λ_{t-1} + η H_{t-1}^{-1} g_t
 
 =#
 function compute_update_rule(solver, H_t)
 
+    # Preallocate λ and G_t
     λ = Array{Float64,1}(undef, solver.n)
 
     G_t = Array{Float64,1}(undef, solver.n)
@@ -156,9 +157,10 @@ function compute_update_rule(solver, H_t)
             println("G_t is negative")
         end
 
-        # Apply exponentiation and square root
+        # Apply square root
         G_t .= map(sqrt, G_t)
 
+        # Update λ using the corresponding formula
         λ .= map(/, solver.η, G_t)
         
         λ .= solver.deflection ? map(*, λ, solver.d_i) : map(*, λ, last_subgrad)
@@ -170,13 +172,11 @@ function compute_update_rule(solver, H_t)
         # Average the row sum of the gradient based on the current iteration in a new variable
         avg_gradient_copy = map(/, solver.s_t, solver.iteration)
 
-        scalar = - solver.η * solver.iteration
+        λ .= map(/, avg_gradient_copy, H_t)
+
+        scalar = solver.η * solver.iteration
 
         BLAS.scal!(solver.n, scalar, λ, 1)
-
-        λ .= map(/, λ, H_t)
-
-        λ .= map(*, λ, avg_gradient_copy)
 
     elseif solver.update_formula == 3 
 
@@ -189,49 +189,16 @@ function compute_update_rule(solver, H_t)
     else
 
         BLAS.scal!(solver.n, Float64(solver.η), λ, 1)
-        # part = solver.grads[:, end]
+
         λ .= map(*, λ, solver.grads[:,end])
 
         axpy!(1, solver.λ, λ)
-        # λ = solver.λ + update_part
 
     end
 
     λ .= max.(0, λ)
 
     return λ
-
-end
-
-
-#=
-    Check the other stopping condition, i.e. when
-
-        ∥ λ_t - λ_{t-1} ∥_2 ≤ ε 
-        
-    whenever this condition is met we have reached an optimal value of multipliers λ,
-    hence we met complementary slackness and we can stop
-=#
-function check_λ_norm(solver, current_λ, previous_λ)
-    
-    res = current_λ .- previous_λ
-
-    distance = norm(res)
-
-    push!(solver.λ_distances, distance)
-
-    if distance <= solver.ε
-        # We should exit the loop
-        # Log result of the last iteration
-        # @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%s \t\t%1.5e \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] "OPT" solver.gaps[end]
-
-        # println("\nOptimal distance between λ's found:")
-        # display(distance)
-        # print("\n")
-        return true
-    end
-
-    return false
 
 end
 
@@ -247,6 +214,11 @@ end
         a = lim λ -> λ_{t-1}^-  ( ϕ(λ) - ϕ(λ_{t-1}) ) / (λ - λ_{t-1})
 
         b = lim λ -> λ_{t-1}^+  ( ϕ(λ) - ϕ(λ_{t-1}) ) / (λ - λ_{t-1})
+
+    If the a-b ≈ 0, then the gradient exists and is simply given by 
+
+        - g^t = ∇_λ ϕ(λ) = x
+
 =#
 function get_subgrad(solver)
 
@@ -308,6 +280,23 @@ function x_norm(previous_x, current_x)
 
 end
 
+#=
+    Compute
+
+        ∥ λ_t - λ_{t-1} ∥_2 
+        
+=#
+function λ_norm(current_λ, previous_λ)
+    
+    res = current_λ .- previous_λ
+
+    distance = norm(res)
+
+    return distance
+
+end
+
+
 
 #=
     Compute the optimal γ resulting from the solution of the problem
@@ -330,38 +319,22 @@ function compute_gamma(solver, subgrad, previous_d)
 end
 
 
-
-function isincreasing(solver)
-
-    # Check last 20 gaps 
-    # latter_minimum = minimum(solver.gaps[1:end-1])
-
-    if solver.iteration - solver.best_iteration < 500#solver.gaps[end] < latter_minimum
-        return false
-    else
-        return true
-    end
-
-end
-
-
-# function make_feasible(solver, mode) x = fill(0.0, solver.n) for set in solver.I_K len = length(set) if len == 1 x[set[1]] = 1.0 else if mode == 1 x[set[1]] = solver.x[set[1]] for i=2:1:len x[set[1]] += solver.x[set[i]] x[set[i]] = 0.0 end else for i in set x[i] = 1 / len end end end end return x end
-
 #=
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
 =#  
 function my_ADAGRAD(solver)
 
-    h = 100 # rand()
+    h = 20 # or rand(), or experimentations
 
-    β = 1 # or rand()
+    β = 1 # or rand(), or experimentations
 
-    α = 1 # or rand()
+    α = 1 # or rand(), or experimentations
 
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
 
+    # To compute γ
     o2 = ones((solver.n,1))
 
     # H_t allocation
@@ -424,6 +397,7 @@ function my_ADAGRAD(solver)
             println("Subgrad is nan!")
         end
 
+        # Apply deflection if needed
         if solver.deflection
 
             previous_d = isempty(solver.grads) ? subgrad : solver.d_i
@@ -434,12 +408,13 @@ function my_ADAGRAD(solver)
 
         end
 
+        # Revert subgrad direction if we gap is diverging
         current_gap < 0 ? subgrad = - subgrad : subgrad = subgrad
 
         # Store subgradient in matrix
         solver.grads = [solver.grads subgrad]
 
-        # Modify η in different ways
+        # Modify η in the proper way
         if solver.stepsize_choice == 0
 
             solver.η = h
@@ -458,12 +433,14 @@ function my_ADAGRAD(solver)
 
         else 
 
-            solver.η = isempty(solver.dual_values) ? 1 : (solver.Off_the_shelf_primal - solver.dual_values[end]) / norm(solver.grads[:,end])^2
+            solver.η = isempty(solver.dual_values) ? 1 : ( (solver.Off_the_shelf_primal - solver.dual_values[end]) / norm(solver.grads[:,end])^2 )
 
         end
         
-        # Solution of dual_function of problem 2.4 (see report)
-        # Accumulate the squared summation into solver.s_t structure
+        #= 
+            Solution of dual_function of problem 2.4 (see report)
+            Accumulate the squared summation into solver.s_t structure
+        =#
         solver.s_t += subgrad
 
         # Create a copy of solver.s_t (avoid modifying the original one)
@@ -498,8 +475,8 @@ function my_ADAGRAD(solver)
         solver.x, solver.μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
         #=
-        Compute the update rule for the lagrangian multipliers λ: can use 
-        one among the three showed, then soft threshold the result
+            Compute the update rule for the lagrangian multipliers λ: can use 
+            one among the three showed, then soft threshold the result
         =#
         solver.λ = compute_update_rule(solver, H_t)
         
@@ -548,19 +525,39 @@ function my_ADAGRAD(solver)
             solver.best_λ .= solver.λ
         end
 
-        if current_gap > 0 && current_gap < 1e2
-            solver.stepsize_choice = 4
+        if current_gap > 0 && current_gap < 2e4
+            h = 1e-1
+            solver.stepsize_choice = 0
         end
+
+        # if current_gap > 0 && current_gap < 1e3
+        #     h = 25
+        # end
+
+        # if current_gap > 0 && current_gap < 5e2
+        #     h = 5
+        # end
+
+        # if current_gap > 0 && current_gap < 1e2
+        #     h = 2
+        # end
+
+        # if current_gap > 0 && current_gap < 1e1
+        #     h = 1e-2
+        # end
+
+        # if current_gap > 0 && current_gap < 1e-1
+        #     h = 1e-3
+        # end
+        
+        # if current_gap > 0 && current_gap < 1e4
+        #     solver.stepsize_choice = 4
+        # end
 
         # Store the current gap
         push!(solver.gaps, current_gap)
 
-        # If λ does not change anymore, we typically violate constraints obtaining negative dual gap, or we reached the objective dual gap
-        if check_λ_norm(solver, solver.λ, previous_λ)
-            # Add last row
-            # push!(df, [ solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], "OPT", solver.gaps[end] ])
-            # break
-        end
+        push!(solver.λ_distances, λ_norm(solver.λ, previous_λ))
 
         if current_gap > 0 && current_gap <= solver.τ
             println("Found optimal dual gap")

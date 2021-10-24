@@ -65,7 +65,7 @@ axes.set_yscale('log', base=10)
 
 axes.set_ylabel(r"""$f(x^*)$ - $\phi (\lambda)$""")
 
-axes.figure.savefig("results/n=1000/n=1000_K=20_gap.png")
+axes.figure.savefig("results/n=1000/n=1000_K=20_gap_update=1.png")
 plt.clf()
 
 
@@ -86,7 +86,7 @@ axes.set_xscale('log', base=10)
 
 axes.set_ylabel(r"""$\phi (\lambda)$""")
 
-axes.figure.savefig("results/n=1000/n=1000_K=20_dual.png")
+axes.figure.savefig("results/n=1000/n=1000_K=20_dual_update=1.png")
 plt.clf()
 
 
@@ -105,4 +105,4 @@ ax2.set_yscale('log', base=10)
 ax2.set_ylabel(r"""$\lambda$ residual""")
 ax.set_ylabel(r"""$x$ residual""")
 
-ax.figure.savefig("results/n=1000/n=1000_K=20_lambda.png")
+ax.figure.savefig("results/n=1000/n=1000_K=20_lambda_update=1.png")

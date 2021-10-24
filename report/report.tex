@@ -109,7 +109,7 @@ Hence we can rewrite the problem in the following form:
 \end{align*}
 In order to have less dual variables, we can rewrite the above problem as a lagrangian function of only the inequality constraints:
 \begin{align*}
-  \mathcal{L}(x;\lambda) = x^T Q x + q x - \left\langle \lambda,x \right\rangle 
+  \mathcal{L}(x;\lambda) = x^T Q x + q^T x + \left\langle \lambda,x \right\rangle 
 \end{align*}
 % {\large Make the dual function depending only on $\lambda$ and "ignore" the equality constraints $\mu$. In this way the relaxed problem is much more easier since we have only to optimize dual variables $\mu$}.\\
 % and then applying the Lagrangian duality we can write the function
@@ -176,7 +176,7 @@ The second update instead
 where $B$ refers to the Bregman divergence. This second update comes from \cite{inproceedings}.\\
 Finally, also the previous mentioned projection rule can be used as an update:
 \begin{equation}
-  \lambda_{t+1} = P_{\mathcal{X}} \{ \lambda_t - \eta\, diag(G_t)^{-1/2} g_t \}
+  \lambda_{t+1} = P_{\mathcal{X}} \{ \lambda_t + \eta\, diag(G_t)^{-1/2} g_t \}
   \label{eqn:standard-rule}
 \end{equation}
 where $P$ denotes the projection operation. The proximal term $\Psi_t$ is the key point of the algorithm. Instead of using a fixed proximal functions, both the updates use squared Mahalanobis norms as their proximal functions, setting then $\Psi_t(\lambda) = \left\langle \lambda,H_t \lambda \right\rangle$ 
@@ -357,12 +357,22 @@ Regarding the maximum, this can be simply solved by differentiating the function
     \tag{Update \eqref{eqn:standard-rule}} \\
     \hat{\lambda}_{t+1} = -H_t^{-1} t\, \eta\, \overline{g}_t
     \tag{Update \eqref{eqn:primal-dual-update}} \\
-    \hat{\lambda}_{t+1} = \lambda_t - \eta\, H_t^{-1}\, g_t 
+    \hat{\lambda}_{t+1} = \lambda_t + \eta\, H_t^{-1}\, g_t 
     \tag{Update \eqref{eqn:composite-mirror-update}}
   \end{align}
 \end{subequations}
-For the stepsize $\eta$, this can be fixed apriori, by using the classical DSS or Polyak stepsize.\\
-For the dual variables, after we obtain the $\hat{\lambda}_{t+1}$, we use the projection over the nonnegative orthant to get $\lambda_{t+1}$, formally
+
+For the stepsize $\eta$, this can be fixed apriori and we will see being it crucial for the convergence of the algorithm. Different stepsize rules can be employed \cite{stepsizes}
+
+\begin{align*}
+  \eta = h && \text{Constant step size rule, with $h > 0$} \\
+  \eta = \frac{h}{\| g^t \|} && \text{Constant step length} \\
+  \eta = \frac{\alpha}{\beta + t} && \text{Square summable but not summable, with $\alpha > 0$ and $\beta \ge 0$} \\
+  \eta = \frac{\alpha}{\sqrt{t}} && \text{Nonsummable diminishing} \\
+  \eta = \frac{f(x^*) - \phi(\lambda_t)}{\|g^t\|^2} && \text{Polyak stepsize} 
+\end{align*}
+
+For the dual variables, after we obtain $\hat{\lambda}_{t+1}$, we use the projection over the nonnegative orthant to get $\lambda_{t+1}$, formally
 \[
   \lambda_{t+1} = P_\mathcal{X}(\hat{\lambda}_{t+1}) = \max{ \{ 0,\hat{\lambda}_{t+1} \} }
 \]
@@ -370,7 +380,7 @@ which is a trivial problem tackled many times in the literature \cite{nonnegativ
 % Projection over non negative orthant is a trivial problem and is solved by simply maximizing componentwise $\lambda_t$ between $\left[ 0,P_\mathcal{X}(\hat{\lambda}_t) \right]$ (FORSE NON PROPRIO, LA PROIEZIONE NON È EUCLIDEA MA IN BASE ALLA MATRICE $G$).\\
 We need also to derive an update for the primal variables, which are needed at each iteration in order to compute the dual function $\psi( \lambda )$ and the subgradient $\nabla_\lambda \psi( \lambda )$. Given the previous multiplier value $\lambda_t$
 \[
-  x_{t+1} = \argmin_{x \in \mathcal{Y}} \{ x^T Q x + q x - \left\langle \lambda_t,x \right\rangle \}
+  x_{t+1} = \argmin_{x \in \mathcal{Y}} \{ x^T Q x + q^T x + \left\langle \lambda_t,x \right\rangle \}
 \]
 We need to solve the lagrangian relaxation of a convex quadratic problem, depending on equality constraints made up of disjoint simplices. The constraint set $\mathcal{Y}$ can be rewritten in a matrix form $Ax = b$, where the vector $b$ is a $k \times 1$ vector of all ones, and the matrix $A$
 can be derived with the following simple algorithm:
@@ -458,8 +468,6 @@ a linear system that can be solved directly and efficiently by computing the piv
   \end{bmatrix}\right) \right)
 \end{gather*}
 which can be solved efficiently through forward substitution (for the matrix $L$) and back substitution (for the matrix $U$) with a complexity of $O((n+K)^2)$.\\
-In the most general case the pivoted LU factorization is preferred, but we will see in the next chapter that the implementation language automatically identify the best 
-factorization to use (for example if the full matrix is positive definite, \textit{Cholesky} is better, as well as if the matrix is symmetric, the \textit{LDL} or \textit{Bunch-Kaufman} factorization are better).\\ 
 Lastly, regarding the stopping condition for the algorithm termination, we can check the dual variables residual. Follows that, given a certain value of tolerance $\varepsilon$, we have %respectively for the primal and dual variables
 \begin{equation}
     \|\lambda_{t} - \lambda_{t-1}\|_2 \le \varepsilon
@@ -478,25 +486,7 @@ From this we understand that having a zero duality gap implies optimality of the
   f(x^*) - \psi(\lambda_i) \le \tau  
 \] 
 for each $\lambda_i$ computed during iterations.\\
-The starting value of the iterates $x$ are set to a starting feasible solution, obtained with the following computation:
-
-\begin{algorithm}[H]
-  \caption{Feasible x}
-  \label{alg:feasible-x}
-  \begin{algorithmic}
-    \Procedure{Get\_$x$}{$\left[I^k\right]$}
-      \State $x \gets zeros(n,1)$
-      \ForEach{$set \in I^k$}
-        \State $len = length(set)$
-        \ForEach{$val \in set$}
-          \State $x[val] = 1 / len$
-        \EndFor
-      \EndFor
-    \EndProcedure
-  \end{algorithmic}  
-\end{algorithm}
-
-and for the $\lambda$'s to a vector of ones.\\
+The starting value of the $\lambda$'s iterates is a vector of ones and the starting $x$ is computed immediately using the starting $\lambda$ and the factorization explained before.\\
 Lastly, an optional parameter is given as input to the algorithm. The parameter $defl$ is a boolean value indicating the use of deflection or not, whose derivation is described in the Appendix \ref{sec:appendix_C}.\\
 Putting everything together, we obtain a slightly different algorithm than \ref{alg:adagrad}:
 
@@ -507,7 +497,7 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
     \Function{\texttt{ADAGRAD}}{$\eta$, $\delta$, $\varepsilon$, $\tau$, $max\_iter$, $defl$}
       \State $\lambda_0 \gets 1$
       \State $g_{1:0} \gets \left[\,\right]$
-      \State $x_0 \gets$ starting feasible solution \ref{alg:feasible-x}
+      \State $x_0 \gets$ system solution  
       \State $\phi = \phi(\lambda_0)$
       \For{$t \gets 1$ to $max\_iter$}
         \State $g_t \gets \dfrac{\partial \psi_\lambda(\lambda)}{\partial \lambda}$\Comment{Compute subgradient \ref{sec:appendix_B}}
@@ -519,7 +509,7 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
         \State $s_{t,i} \gets \| g_{1:t,i} \|_2$\Comment{Solution of the problem \ref{sec:convergence}}
         \State $H_t = \gets \delta \mathit{I} + diag(s_t)$
         % \State $\Psi_t(\lambda_{t-1}) \gets \frac{1}{2} \left\langle \lambda_{t-1},H_t \lambda_{t-1} \right\rangle$  
-        \State $x_t = \argmin_{x \in \mathcal{Y}} \left\lbrace x^T Q x + q x - \left\langle \lambda_{t-1},x \right\rangle \right\rbrace$\Comment{Lagrangian}
+        \State $x_t = \argmin_{x \in \mathcal{Y}} \left\lbrace x^T Q x + q x + \left\langle \lambda_{t-1},x \right\rangle \right\rbrace$\Comment{Lagrangian}
         \State $\hat{\lambda}_t =$ one among $\eqref{eqn:updates}$
         \State $\lambda_t = P_\mathcal{X}(\hat{\lambda}_t)$ 
         \If{$\phi(\lambda_t) \ge \phi$}
@@ -537,62 +527,53 @@ Putting everything together, we obtain a slightly different algorithm than \ref{
 
 \section{Implementation}
 The ideas above described have been implemented using Julia. The provided package give us the ability to provide the dimension of the problem $n$ and the number of simplices $K$.\\
-Subsequently, the code is all automated and provide the creation of the matrix $Q \succeq 0$, $A$, the random sets $I^k$, the vector $q$ and all the required parameters. The resulting solutions 
-of the three different update rules are saved and compared with the optimal primal solution $f(x^*)$ found using the off-the-shelf solver \textit{Convex.jl} \cite{DunningHuchetteLubin2017} selecting
-between the different supported and available solvers, in particular, SCS \cite{ocpb:16} or COSMO \cite{Garstka_2021}, which are able to deal with our kind of problem.\\
+Subsequently, the code is all automated and provide the creation of the matrix $Q \succeq 0$, $A$, the random sets $I^k$, the vector $q$ and all the required parameters. The update rules that you want 
+to test can be chosen as well as the different stepsize rules that you want to employ.\\
+The structures created are stored in \textit{mat} file and load each time to avoid time consumption in the creation of the different objects and also for the derivation of the optimal primal solution. 
+Indeed this latter is found using the off-the-shelf solver YALMIP, available on MATLAB, where the generated \textit{mat} file is stored and a simple script is used to derive the primal solution.\\
 Also, there are some hyperparameters which can be modified by the user inside \textit{main.jl}, like the maximum number of iterations and the $\varepsilon$ value to check the $\lambda$ residual.\\
-All the values assumed by $x$, $\lambda$, each $\lambda$-norm and $x$-norm residual, the number of iterations, the value of the dual function and the gap at the current iteration are displayed 
-step by step and stored in a \textit{csv} file. At the end of the algorithm runs, the collected values are used to display a convergence plot (\textit{iterations} vs $\phi(\lambda_t)$), a residual visualization plot of the 
-$\lambda$-norm and $x$-norm (\textit{iterations} vs $\lambda$/$x$\textit{-norms}) and finally a gap residual plot (\textit{iterations} vs $f(x^*) - \phi(\lambda_t)$).\\
-During the execution of the algorithm, the initial parameters are showed, as well as the result of \textit{Convex.jl}. Then, the customized \texttt{ADAGRAD} starts with the three different variations, 
-showing at each iteration the values described before (the time elapsed, the $\phi$ value, both the $\lambda$ norm residual and the $x$ one, and the dual gap $f(x^*) - \phi(\lambda)$).\\
+All the values assumed by each $\lambda$-norm and $x$-norm residual, the number of iterations, the value of the dual function and the gap at the current iteration are stored in a \textit{csv} file. 
+The last one is used then to generate some plots showing the convergence towards the optimal solution.\\
+The customized \texttt{ADAGRAD} display every ten iterations the time elapsed, the $\phi$ value, both the $\lambda$ norm residual and the $x$ one, and the dual gap $f(x^*) - \phi(\lambda)$.\\
 In order to test the program on different problem dimensions, we have chosen different sizes to perform our experiments, in order to have a "grid search" of different experimentations:
 
 % MODIFICA TABELLA VALORI
 \begin{center}
-  \begin{tabular}[H]{| L | L | L | L |}
+  \begin{tabular}[H]{| L | L | L | L | L | L | L |}
     \hline
-    \mathbf{n} & \mathbf{K} & \pmb{\varepsilon} & \mathbf{max\_iter} \\
+    \mathbf{n} & \mathbf{K} & \pmb{\varepsilon} & \pmb{\tau} & \pmb{\alpha} & \mathbf{max\_iter} \\
     \hline
-    2 & \left[1, 2\right] & 10^{-6} & 100000 \\
+    1000 & \left[20\right] & 10^{-14} & 10^{-8} & 0.8 & 100000 \\
     \hline
-    5 & \left[2, 3, 4\right] & 10^{-6} & 100000 \\
-    \hline
-    10 & \left[3, 5, 7\right] & 10^{-6} & 100000 \\
-    \hline
-    20 & \left[5, 10, 15\right] & 10^{-6} & 100000 \\
-    \hline
-    25 & \left[7, 13, 19\right] & 10^{-6} & 100000 \\
-    \hline
-    40 & \left[10, 20, 30\right] & 10^{-6} & 100000 \\
-    \hline
-    50 & \left[10, 20, 30, 40\right] & 10^{-6} & 100000 \\
-    \hline
-    100 & \left[20, 33, 50, 66, 80\right] & 10^{-6} & 100000 \\
+    5000 & \left[10\right] & 10^{-14} & 10^{-6} & 0.3 & 100000 \\
     \hline
   \end{tabular}  
   \label{tab:experiments}
 \end{center}
 
-Note that in each execution also the value of $defl$ was set to true.\\
-The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled, all modules are loaded and the needed memory is computed, 
-then the next executions are much much faster. We suggest to do first executions with low magnitude of dimensions ($n=2$ and $K=1$ or $2$) and ignore the results, and then start the experiments with whatever value you choose.\\
+% Note that in each execution also the value of $defl$ was set to true.\\
+The code was executed using Julia \textit{REPL} tool. It has a slowish startup time, so the first execution are "warm-up" execution, but as soon as the entire code is compiled, all modules are loaded and the needed memory is computed. 
 The matrix $Q$ is the resulting covariance matrix of a random generated matrix $A_h$, in formula: 
 \[
   Q = A_h^T * A_h  
 \]
 which we know being symmetric and surely positive semidefinite.\\
-Regarding the factorization, the entire KKT matrix is factorized using the \textit{Julia} method \texttt{factorize()}. This method identify the best factorization for the KKT matrix using some properties about it, in particular:
-
-\begin{itemize}
-  \item If the KKT matrix is positive definite, \textit{Cholesky} is used;
-  \item If the KKT matrix is symmetric, \textit{Bunch-Kaufman} factorization is used;
-  \item If none of the above is verified, the pivoted \textit{LU} factorization is used;
-\end{itemize} 
-
-Being $Q$ a symmetric covariance matrix, the \textit{Bunch-Kaufman} one is always used.\\
+Regarding the factorization, the entire KKT matrix is factorized using the \textit{Julia} method \texttt{lu!()}.\\
 Another observation regard the subgradient. Being the $\phi$ non differentiable in the general case, the direction is not guaranteed to be ascent/descent. So we keep track of the best $\phi(\lambda)$, best iteration, best $x$ 
-and $\lambda$ to get the suboptimal solution found. This sometimes result in the dual function being minimized instead of maximized. This is due to the fact that there is no guarantee that the direction is an ascent one.\\
+and $\lambda$ to get the suboptimal solution found. This sometimes result in the dual function being minimized instead of maximized. In certain cases we observed also that when we reach a negative dual gap (due to big steps and not feasibility of the
+actual iterates) changing the direction of the subgradient brings improvement in reaching the solution.\\
+Last but not least, we noticed in the experiments that the stepsize selection is crucial for the convergence of the algorithm. In particular, the value of the hyperparameters $\alpha$, $\beta$ and $\delta$ should be chosen ad-hoc to guarantee 
+that we have a "smooth" optimization.\\
+What we noticed in particular is about the different update rules and hyperparameters. As already said, the value of $\alpha$, $\beta$ and $\delta$ are fundamental, the latter for the update rules \eqref{eqn:primal-dual-update} 
+and \eqref{eqn:composite-mirror-update} while the first two for the standard \eqref{eqn:standard-rule}.\\
+In the first two mentioned updates, the value of $H_t^{-1}$ acts as a sort of "regularizer", scaling in both cases the big value of the gradient. Modifying $\delta$ impacts primarly on the steps taken, with smaller value of it resulting in 
+bigger steps while a low value of it result in a very low convergence (even too much).\\
+Referring always to these two updates, the only stepsize rule that give a "fast" convergence with big steps is the first one, a constant stepsize with an high value of $h$. Of course, when we reach a smaller dual gap we decrease $h$ switching to the 
+Polyak stepsize in the tail (to have a smooth finish).\\
+The rule \eqref{eqn:primal-dual-update} shows no improvement even adjusting these parameters, while rule \eqref{eqn:composite-mirror-update} converges slowly with respect to the standard one.\\
+Indeed it is rule \eqref{eqn:standard-rule} that give us the best results: we are capable of reaching the desired dual gap in fewer iterations, adjusting the value of the hyperparameters. In this case, we used the nonsummable diminishing rule 
+fixing the value of $\alpha$, switching to Polyak stepsize in the tail.\\
+We can show some plots and timing results of the experiments reported in the table
 % We can report now some plots comparing the results of the executions obtained together with the total time spent in the algorithm execution, with fixed value of $n=50$, number of simplices set $K=40$, first using a positive definite $Q$
 % and then a positive semidefinite $Q$.\\
 % Following, a table will sum up all the results obtained.\\
@@ -600,109 +581,65 @@ and $\lambda$ to get the suboptimal solution found. This sometimes result in the
 
 \newgeometry{left=0.5cm, right=0.5cm, bottom=0.5cm, top=0.5cm}
 
-% \begin{center}
-%   {\Large\bfseries Positive definite $\mathbf{Q}$}
-% \end{center}
+\hspace{0pt}
+\vfill
 
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=false.png}
-%   \caption{Update rule 1 without deflection}
-%   \label{fig:rule-1-n-50-k-40}
-% \end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.65]{pics/n=1000_K=20_gap_rule=1.png}
+  \caption{Dual gap with update rule $1$, $n=1000$ and $K=20$}
+  \label{fig:rule-1-n-1000-k-20-gap}
+\end{figure}
 
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/pd_q/Rule=1_n=50_K=40_defl=true.png}
-%   \caption{Update rule 1 with deflection}
-%   \label{fig:rule-1-n-50-k-40-defl}
-% \end{figure}
+\begin{figure}[H]
+  \begin{minipage}{0.49\textwidth}
+    \centering
+    \includegraphics[scale=0.33]{pics/n=1000_K=20_dual_rule=1.png}
+    \caption{Dual value with update rule $1$, $n=1000$ and $K=20$}
+    \label{fig:rule-1-n-1000-k-20-dual}
+  \end{minipage}
+  \begin{minipage}{0.49\textwidth}
+    \centering
+    \includegraphics[scale=0.33]{pics/n=1000_K=20_lambda_rule=1.png}
+    \caption{Norms with update rule $1$, with $n=1000$ and $K=20$}
+    \label{fig:rule-1-n-1000-k-20-norm}
+  \end{minipage}  
+\end{figure}
 
-% \newpage
+\vfill
+\hspace{0pt}
 
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=false.png}
-%   \caption{Update rule 2 without deflection}
-%   \label{fig:rule-2-n-50-k-40}
-% \end{figure}
+\newpage
 
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/pd_q/Rule=2_n=50_K=40_defl=true.png}
-%   \caption{Update rule 2 with deflection}
-%   \label{fig:rule-2-n-50-k-40-defl}
-% \end{figure}
+\hspace{0pt}
+\vfill
 
-% \newpage
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.65]{pics/n=5000_K=10_gap_rule=1.png}
+  \caption{Dual gap with update rule $1$, $n=5000$ and $K=10$}
+  \label{fig:rule-1-n-5000-k-10-gap}
+\end{figure}
 
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=false.png}
-%   \caption{Update rule 3 without deflection}
-%   \label{fig:rule-3-n-50-k-40}
-% \end{figure}
+\begin{figure}[H]
+  \begin{minipage}{0.49\textwidth}
+    \centering
+    \includegraphics[scale=0.33]{pics/n=5000_K=10_dual_rule=1.png}
+    \caption{Dual value with update rule $1$, $n=5000$ and $K=10$}
+    \label{fig:rule-1-n-5000-k-10-dual}
+  \end{minipage}
+  \begin{minipage}{0.49\textwidth}
+    \centering
+    \includegraphics[scale=0.33]{pics/n=5000_K=10_lambda_rule=1.png}
+    \caption{Norms with update rule $1$, with $n=5000$ and $K=10$}
+    \label{fig:rule-1-n-5000-k-10-norm}
+  \end{minipage}  
+\end{figure}
 
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/pd_q/Rule=3_n=50_K=40_defl=true.png}
-%   \caption{Update rule 3 with deflection}
-%   \label{fig:rule-3-n-50-k-40-defl}
-% \end{figure}
+\vfill
+\hspace{0pt}
 
-% \newpage
-
-% \begin{center}
-%   {\Large\bfseries Positive semidefinite $\mathbf{Q}$}
-% \end{center}
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=false.png}
-%   \caption{Update rule 1 without deflection}
-%   \label{fig:rule-1-n-50-k-40-psdQ}
-% \end{figure}
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/psd_q/Rule=1_n=50_K=40_defl=true.png}
-%   \caption{Update rule 1 with deflection}
-%   \label{fig:rule-1-n-50-k-40-defl-psdQ}
-% \end{figure}
-
-% \newpage
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=false.png}
-%   \caption{Update rule 2 without deflection}
-%   \label{fig:rule-2-n-50-k-40-psdQ}
-% \end{figure}
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/psd_q/Rule=2_n=50_K=40_defl=true.png}
-%   \caption{Update rule 2 with deflection}
-%   \label{fig:rule-2-n-50-k-40-defl-psdQ}
-% \end{figure}
-
-% \newpage
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=false.png}
-%   \caption{Update rule 3 without deflection}
-%   \label{fig:rule-3-n-50-k-40-psdQ}
-% \end{figure}
-
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.25]{pics/psd_q/Rule=3_n=50_K=40_defl=true.png}
-%   \caption{Update rule 3 with deflection}
-%   \label{fig:rule-3-n-50-k-40-defl-psdQ}
-% \end{figure}
-
-% \newpage
+\newpage
 
 % \begin{table}[H]
 %   \centering
@@ -1010,7 +947,7 @@ And so is easy to see that
 And finally putting this into the main problem, we get:
 \begin{gather*}
   \eta\, g_t + H_t\, \lambda - H_t \lambda_t = 0 \quad \implies H_t\, \lambda = H_t \lambda_t - \eta\, g_t \\
-  \lambda = H_t^{-1} \left[ H_t \lambda_t - \eta\, g_t \right] = \lambda_t - \eta\, H_t^{-1}\, g_t
+  \lambda = H_t^{-1} \left[ H_t \lambda_t - \eta\, g_t \right] = \lambda_t + \eta\, H_t^{-1}\, g_t
 \end{gather*}
 
 

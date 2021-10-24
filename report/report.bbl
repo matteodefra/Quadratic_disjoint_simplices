@@ -1,4 +1,4 @@
-\begin{thebibliography}{10}
+\begin{thebibliography}{1}
 
 \bibitem{JMLR:v12:duchi11a}
 John Duchi, Elad Hazan, and Yoram Singer.
@@ -35,6 +35,12 @@ Yurii Nesterov.
 \newblock Primal-dual subgradient methods for convex problems.
 \newblock {\em Mathematical Programming}, 120(1):221--259, Aug 2009.
 
+\bibitem{stepsizes}
+Marina~A. Epelman.
+\newblock Ioe 511/math 652: Continuous optimization methods, section 1, 2007.
+\newblock Lecture notes
+  \url={http://www-personal.umich.edu/~mepelman/teaching/511notesFA07.pdf}.
+
 \bibitem{nonnegative-orthant}
 Ang Andersen.
 \newblock Projection onto nonnegative orthant, rectangular box and polyhedron,
@@ -42,22 +48,5 @@ Ang Andersen.
 \newblock First draft: March 19, 2020; Last update: December 23, 2020.
   Université de Mons,
   \url{https://angms.science/doc/CVX/Proj_nonnegBoxpoly.pdf}.
-
-\bibitem{DunningHuchetteLubin2017}
-Iain Dunning, Joey Huchette, and Miles Lubin.
-\newblock Jump: A modeling language for mathematical optimization.
-\newblock {\em SIAM Review}, 59(2):295--320, 2017.
-
-\bibitem{ocpb:16}
-Brendan O'Donoghue, Eric Chu, Neal Parikh, and Stephen Boyd.
-\newblock Conic optimization via operator splitting and homogeneous self-dual
-  embedding.
-\newblock {\em Journal of Optimization Theory and Applications},
-  169(3):1042--1068, June 2016.
-
-\bibitem{Garstka_2021}
-Michael Garstka, Mark Cannon, and Paul Goulart.
-\newblock {COSMO}: A conic operator splitting method for convex conic problems.
-\newblock {\em Journal of Optimization Theory and Applications}, 2021.
 
 \end{thebibliography}

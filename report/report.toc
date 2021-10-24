@@ -5,12 +5,12 @@
 \contentsline {subsection}{\numberline {2.3}Proximal term discussion}{2}{subsection.2.3}%
 \contentsline {subsection}{\numberline {2.4}Convergence Analysis}{3}{subsection.2.4}%
 \contentsline {subsection}{\numberline {2.5}General application to our case}{6}{subsection.2.5}%
-\contentsline {section}{\numberline {3}Implementation}{8}{section.3}%
-\contentsline {section}{\numberline {4}Code description}{11}{section.4}%
-\contentsline {section}{References}{12}{section.4}%
-\contentsline {section}{\numberline {A}Appendix A: Updates derivations}{13}{appendix.A}%
-\contentsline {subsection}{\numberline {A.1}Differentiating proximal term}{13}{subsection.A.1}%
-\contentsline {subsection}{\numberline {A.2}Derivation of primal-dual update}{13}{subsection.A.2}%
-\contentsline {subsection}{\numberline {A.3}Derivation of composite-mirror update}{13}{subsection.A.3}%
-\contentsline {section}{\numberline {B}Appendix B: subgradient computation}{14}{appendix.B}%
-\contentsline {section}{\numberline {C}Appendix C: $\gamma $ computation}{14}{appendix.C}%
+\contentsline {section}{\numberline {3}Implementation}{9}{section.3}%
+\contentsline {section}{\numberline {4}Code description}{13}{section.4}%
+\contentsline {section}{References}{14}{section.4}%
+\contentsline {section}{\numberline {A}Appendix A: Updates derivations}{15}{appendix.A}%
+\contentsline {subsection}{\numberline {A.1}Differentiating proximal term}{15}{subsection.A.1}%
+\contentsline {subsection}{\numberline {A.2}Derivation of primal-dual update}{15}{subsection.A.2}%
+\contentsline {subsection}{\numberline {A.3}Derivation of composite-mirror update}{15}{subsection.A.3}%
+\contentsline {section}{\numberline {B}Appendix B: subgradient computation}{16}{appendix.B}%
+\contentsline {section}{\numberline {C}Appendix C: $\gamma $ computation}{16}{appendix.C}%

@@ -105,7 +105,7 @@ end
 print("Use stored .mat?[y/n] ")
 y = readline()
 
-vars = y == "y" ? matread("mat/structs.mat") : []
+vars = y == "y" ? matread("mat/structs_n1000_K20.mat") : []
 
 print("Input n value: ")
 n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
@@ -114,11 +114,9 @@ print("Enter K value for n=$(n): ")
 K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
 
 print("Deflection?[y/n] ")
-# deflection = readline()
 deflections = isequal("y",readline()) ? [true, false] : [false]
 
 print("Use different stepsize choices?[y/n] ")
-# stepsizes = readline()
 #=
     0: Constant step size                   η = h               with h > 0
     1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
@@ -170,16 +168,6 @@ println("Set of I_K arrays:")
 display(I_K)
 print("\n")
 
-# Initialize x iterates to feasible solution
-# const x = ones((n,1))
-
-# # Feasible x
-# for set in I_K
-#     for val in set
-#         x[val] = 1/length(set)
-#     end
-# end
-
 # Initialize λ iterates to ones
 λ = ones((n,1))
 
@@ -206,7 +194,7 @@ print("\n")
 const η = 1
 
 # Initialize δ
-δ = 1e-2#abs(rand())
+δ = 1e-16 # or abs(rand())
 
 # Initialize max_iter
 const max_iter = 100000
@@ -225,27 +213,19 @@ display(A)
 print("\n")
 
 Full_mat = Utils.construct_full_matrix(Q, A, K)
-# Full_mat = [ Q ; A ]
-
-# part = [ A' ; zeros((K,K)) ]
-
-# Full_mat = Symmetric([ Full_mat part ])
 
 println("Full matrix:")
 display(Full_mat)
 print("\n")
 
-#= 
+#=
     Let Julia automatically determine the best factorization:
         
         Cholesky ( if Full_mat ≻ 0 )
         Bunch-Kaufman ( if Q=Q^T )
         pivoted LU ( otherwise )
 =#
-# const F, pivoting, info = LAPACK.getrf!(Full_mat)
 F = lu!(Full_mat)
-# F = factorize(Full_mat)
-# F = cholesky(Full_mat)
 
 println("Factorization:")
 display(F)
@@ -263,7 +243,7 @@ println("Starting λs:")
 display(λ)
 print("\n")
 
-matwrite("mat/structs.mat", Dict(
+matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
     "Q" => Q,
     "A" => A,
     "q" => q,
@@ -289,11 +269,11 @@ matwrite("mat/structs.mat", Dict(
 # display(convex_sol.opt_val)
 # print("\n")
 
-opt_val = 1.202577640305848e+05
+# Optimal value for structs_n5000_K10
+# opt_val = 1.202577640305848e+05
 
-
-# For the current structs.mat
-# const yalmip_optval = 93592.0938
+# Optimal value for structs_n1000_K20
+opt_val = 9.260941479664706e+04
 
 testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, 
         max_iter, ε, τ, stepsizes, F, A, opt_val)

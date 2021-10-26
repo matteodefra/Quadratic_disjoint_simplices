@@ -1,10 +1,8 @@
 include("./ADAGRAD_Solver.jl")
 include("./Utils.jl")
-include("./ConvexSolution.jl")
 
 using LinearAlgebra
 using Random
-using Convex
 using MAT
 using .Utils
 using .ADAGRAD_Solver
@@ -21,7 +19,7 @@ function testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, 
 
         for stepsize in stepsizes
 
-            for update_rule in [3]
+            for update_rule in [1]
 
                 # Create three different struct to exploit the three update rule
                 sol = ADAGRAD_Solver.Solver(
@@ -105,7 +103,7 @@ end
 print("Use stored .mat?[y/n] ")
 y = readline()
 
-vars = y == "y" ? matread("mat/structs_n1000_K20.mat") : []
+vars = y == "y" ? matread("mat/structs_n10000_K10.mat") : []
 
 print("Input n value: ")
 n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
@@ -124,7 +122,7 @@ print("Use different stepsize choices?[y/n] ")
     3: Nonsummable diminishing              η = α / √t          with α > 0 
     4: Optimal                              η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
 =#
-stepsizes = isequal("y",readline()) ? [0, 1, 2, 3, 4] : [0]
+stepsizes = isequal("y",readline()) ? [0, 1, 2, 3, 4] : [2]
 
 println("Initializing random disjoint sets")
 
@@ -250,30 +248,16 @@ matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
     "I" => I_K
 );compress = true) 
 
-#------------------------------------------------------#
-#-----    Use Convex.jl to compute primal solution   ----#
-#------------------------------------------------------#
-
-# convex_sol = ConvexSolution.ConvexSol(
-#     n,
-#     K, 
-#     Variable(n),
-#     A,
-#     Q,
-#     q
-# )
-
-# convex_sol = ConvexSolution.compute_solution(convex_sol)
-
-# println("Convex.jl optimal value:")
-# display(convex_sol.opt_val)
-# print("\n")
 
 # Optimal value for structs_n5000_K10
 # opt_val = 1.202577640305848e+05
 
 # Optimal value for structs_n1000_K20
-opt_val = 9.260941479664706e+04
+# opt_val = 9.260941479664706e+04
+
+# Optimal value for structs_n10000_K1
+opt_val = Inf   
+
 
 testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, 
         max_iter, ε, τ, stepsizes, F, A, opt_val)

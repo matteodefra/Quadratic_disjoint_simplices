@@ -325,11 +325,11 @@ end
 =#  
 function my_ADAGRAD(solver)
 
-    h = 20 # or rand(), or experimentations
+    h = 10 # or rand(), or experimentations
 
     β = 1 # or rand(), or experimentations
 
-    α = 1 # or rand(), or experimentations
+    α = 0.8 # or rand(), or experimentations
 
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
@@ -525,11 +525,6 @@ function my_ADAGRAD(solver)
             solver.best_λ .= solver.λ
         end
 
-        if current_gap > 0 && current_gap < 2e4
-            h = 1e-1
-            solver.stepsize_choice = 0
-        end
-
         # if current_gap > 0 && current_gap < 1e3
         #     h = 25
         # end
@@ -550,9 +545,9 @@ function my_ADAGRAD(solver)
         #     h = 1e-3
         # end
         
-        # if current_gap > 0 && current_gap < 1e4
-        #     solver.stepsize_choice = 4
-        # end
+        if current_gap > 0 && current_gap < 1e4
+            solver.stepsize_choice = 4
+        end
 
         # Store the current gap
         push!(solver.gaps, current_gap)
@@ -561,6 +556,22 @@ function my_ADAGRAD(solver)
 
         if current_gap > 0 && current_gap <= solver.τ
             println("Found optimal dual gap")
+            # Log result of the current iteration
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+            push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
+            break   
+        end
+
+        if solver.λ_distances[end] < solver.ε && solver.iteration > 10
+            println("λ not changing anymore")
+            # Log result of the current iteration
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+            push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
+            break   
+        end
+
+        if norm(subgrad) < solver.ε
+            println("Subgradient is zero")
             # Log result of the current iteration
             @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
             push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])

@@ -49,4 +49,10 @@ Ang Andersen.
   Université de Mons,
   \url{https://angms.science/doc/CVX/Proj_nonnegBoxpoly.pdf}.
 
+\bibitem{Lofberg2004}
+J.~L{\"{o}}fberg.
+\newblock Yalmip : A toolbox for modeling and optimization in matlab.
+\newblock In {\em In Proceedings of the CACSD Conference}, Taipei, Taiwan,
+  2004.
+
 \end{thebibliography}

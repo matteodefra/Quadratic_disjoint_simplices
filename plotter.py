@@ -46,7 +46,7 @@ sns.set_theme(style="ticks", rc = custom_conf)
 sns.set_palette('pastel')
 
 
-df = pd.read_csv("results/n=1000/results_n=1000_K=20_update=1_defl=false_step=4.csv", delimiter=',')
+df = pd.read_csv("results/n=1000/results_n=1000_K=20_update=3_defl=false_step=3.csv", delimiter=',')
 
 
 axes = sns.lineplot(
@@ -65,7 +65,7 @@ axes.set_yscale('log', base=10)
 
 axes.set_ylabel(r"""$f(x^*)$ - $\phi (\lambda)$""")
 
-axes.figure.savefig("results/n=1000/n=1000_K=20_gap_update=1.png")
+axes.figure.savefig("results/n=1000/n=1000_K=20_gap_rule=3.png")
 plt.clf()
 
 
@@ -86,7 +86,7 @@ axes.set_xscale('log', base=10)
 
 axes.set_ylabel(r"""$\phi (\lambda)$""")
 
-axes.figure.savefig("results/n=1000/n=1000_K=20_dual_update=1.png")
+axes.figure.savefig("results/n=1000/n=1000_K=20_dual_rule=3.png")
 plt.clf()
 
 
@@ -105,4 +105,4 @@ ax2.set_yscale('log', base=10)
 ax2.set_ylabel(r"""$\lambda$ residual""")
 ax.set_ylabel(r"""$x$ residual""")
 
-ax.figure.savefig("results/n=1000/n=1000_K=20_lambda_update=1.png")
+ax.figure.savefig("results/n=1000/n=1000_K=20_lambda_rule=3.png")

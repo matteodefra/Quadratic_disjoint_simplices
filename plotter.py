@@ -30,9 +30,9 @@ custom_conf = {'figure.facecolor': 'white',
  'xtick.top': False,
 #  'ytick.right': False,
  'axes.grid': True,
- 'axes.facecolor': '#EAEAF2',
- 'axes.edgecolor': 'white',
- 'grid.color': 'white',
+#  'axes.facecolor': '#EAEAF2',
+#  'axes.edgecolor': 'white',
+ 'grid.color': 'lightgrey',
  'axes.spines.left': True,
  'axes.spines.bottom': True,
  'axes.spines.right': True,
@@ -46,7 +46,7 @@ sns.set_theme(style="ticks", rc = custom_conf)
 sns.set_palette('pastel')
 
 
-df = pd.read_csv("results/n=1000/results_n=1000_K=20_update=3_defl=false_step=3.csv", delimiter=',')
+df = pd.read_csv("results/n=5000/results_n=5000_K=10_update=3_defl=false_step=0.csv", delimiter=',')
 
 
 axes = sns.lineplot(
@@ -55,7 +55,7 @@ axes = sns.lineplot(
     data=df,
     alpha=0.9, 
     legend='full',
-    lw=2,
+    lw=3,
     label=r"""$f(x^*)$ - $\phi (\lambda)$""",
     color= sns.color_palette('pastel')[3]
 )
@@ -65,7 +65,7 @@ axes.set_yscale('log', base=10)
 
 axes.set_ylabel(r"""$f(x^*)$ - $\phi (\lambda)$""")
 
-axes.figure.savefig("results/n=1000/n=1000_K=20_gap_rule=3.png")
+axes.figure.savefig("results/n=5000/n=5000_K=10_gap_rule=3.png")
 plt.clf()
 
 
@@ -75,7 +75,7 @@ axes = sns.lineplot(
     data=df,
     alpha=0.9, 
     legend='full',
-    lw=2,
+    lw=3,
     label=r"""$\phi (\lambda)$""",
     color= sns.color_palette('pastel')[3]
 )
@@ -86,14 +86,14 @@ axes.set_xscale('log', base=10)
 
 axes.set_ylabel(r"""$\phi (\lambda)$""")
 
-axes.figure.savefig("results/n=1000/n=1000_K=20_dual_rule=3.png")
+axes.figure.savefig("results/n=5000/n=5000_K=10_dual_rule=3.png")
 plt.clf()
 
 
-ax = df.plot(x="Iteration", y="x_norm_residual", legend=False, alpha=0.6, color= sns.color_palette('pastel')[2], lw=2, label=r"""$\parallel x_t$ - $x_{t-1} \parallel$""")
+ax = df.plot(x="Iteration", y="x_norm_residual", legend=False, alpha=0.6, color= sns.color_palette('pastel')[2], lw=3, label=r"""$\parallel x_t$ - $x_{t-1} \parallel$""")
 ax2 = ax.twinx()
 
-df.plot(x="Iteration", y="λ_norm_residual", ax=ax2, legend=False, color= sns.color_palette('pastel')[3], alpha=0.6, lw=2, label=r"""$\parallel λ_t$ - $λ_{t-1} \parallel$""")
+df.plot(x="Iteration", y="λ_norm_residual", ax=ax2, legend=False, color= sns.color_palette('pastel')[3], alpha=0.6, lw=3, label=r"""$\parallel λ_t$ - $λ_{t-1} \parallel$""")
 ax.figure.legend(loc='upper center')
 
 ax.set_xscale('log', base=10)
@@ -105,4 +105,4 @@ ax2.set_yscale('log', base=10)
 ax2.set_ylabel(r"""$\lambda$ residual""")
 ax.set_ylabel(r"""$x$ residual""")
 
-ax.figure.savefig("results/n=1000/n=1000_K=20_lambda_rule=3.png")
+ax.figure.savefig("results/n=5000/n=5000_K=10_lambda_rule=3.png")

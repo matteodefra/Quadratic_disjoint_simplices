@@ -8,86 +8,80 @@ using .Utils
 using .ADAGRAD_Solver
 using .ConvexSolution
 
-function testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
+function testing(n, K, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
     #------------------------------------------------------#
     #----------     Create problem structs     ------------#
     #------------------------------------------------------#
 
     Iden = ones((n,1))
 
-    for deflection in deflections
+    for stepsize in stepsizes
 
-        for stepsize in stepsizes
+        for update_rule in [1]
 
-            for update_rule in [1]
+            # Create three different struct to exploit the three update rule
+            sol = ADAGRAD_Solver.Solver(
+                n, 0, λ, μ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
+                fill(0.0, n), # G_t 
+                fill(0.0, n), # s_t
+                δ .* Iden, # H_t
+                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
+                0, # best_iteration
+                x, # best_x
+                λ, # best_λ
+                Vector{Float64}(), # num_iterations
+                Vector{Float64}(), # dual_values
+                Vector{Float64}(), # λ_distances
+                Vector{Float64}(), # x_distances
+                Vector{Float64}(), # timings
+                Vector{Float64}(), # gaps
+                update_rule, # update_rule
+                stepsize, # stepsize_choice
+                F, # Best factorization
+                A, # Constraint matrix
+                primal_optimal # Primal optimal value
+            )
 
-                # Create three different struct to exploit the three update rule
-                sol = ADAGRAD_Solver.Solver(
-                    n, 0, λ, μ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                    fill(0.0, n), # G_t 
-                    fill(0.0, n), # s_t
-                    δ .* Iden, # H_t
-                    fill(0.0, n), # d_i
-                    deflection, # deflection
-                    Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-                    0, # best_iteration
-                    x, # best_x
-                    λ, # best_λ
-                    Vector{Float64}(), # num_iterations
-                    Vector{Float64}(), # dual_values
-                    Vector{Float64}(), # λ_distances
-                    Vector{Float64}(), # x_distances
-                    Vector{Float64}(), # timings
-                    Vector{Float64}(), # gaps
-                    update_rule, # update_rule
-                    stepsize, # stepsize_choice
-                    F, # Best factorization
-                    A, # Constraint matrix
-                    primal_optimal # Primal optimal value
-                )
-
-                #------------------------------------------------------#
-                #--------     Calculate custom solution     -----------#
-                #------------------------------------------------------#
+            #------------------------------------------------------#
+            #--------     Calculate custom solution     -----------#
+            #------------------------------------------------------#
 
 
-                # Now calculate the results of ADAGRAD in the three different fashion way
-                sol = @time ADAGRAD_Solver.my_ADAGRAD(sol)
+            # Now calculate the results of ADAGRAD in the three different fashion way
+            sol = @time ADAGRAD_Solver.my_ADAGRAD(sol)
 
-                #------------------------------------------------------#
-                #------------     Results for rules     ---------------#
-                #------------------------------------------------------#
+            #------------------------------------------------------#
+            #------------     Results for rules     ---------------#
+            #------------------------------------------------------#
 
-                print("\n\n\n\n")
-                print("------------------- Rule $(sol.update_formula) results -------------------\n\n")
+            print("\n\n\n\n")
+            print("------------------- Rule $(sol.update_formula) results -------------------\n\n")
 
-                println("Optimal x found (rule $(sol.update_formula)):")
-                display(sol.best_x)
-                print("\n")
+            println("Optimal x found (rule $(sol.update_formula)):")
+            display(sol.best_x)
+            print("\n")
 
-                println("Optimal λ found (rule $(sol.update_formula)):")
-                display(sol.best_λ)
-                print("\n")
+            println("Optimal λ found (rule $(sol.update_formula)):")
+            display(sol.best_λ)
+            print("\n")
 
-                println("Best value of dual function at iteration $(sol.best_iteration) (rule $(sol.update_formula)):")
-                display(sol.best_dual)
-                print("\n")
+            println("Best value of dual function at iteration $(sol.best_iteration) (rule $(sol.update_formula)):")
+            display(sol.best_dual)
+            print("\n")
 
-                println("Duality gap between f( x* ) and ϕ( λ ) (rule $(sol.update_formula)):")
+            println("Duality gap between f( x* ) and ϕ( λ ) (rule $(sol.update_formula)):")
 
-                dual_gap = primal_optimal - sol.best_dual
+            dual_gap = primal_optimal - sol.best_dual
 
-                display(dual_gap)
-                print("\n")
+            display(dual_gap)
+            print("\n")
 
-                matwrite("mat/matsolution_rule=$(sol.update_formula)_defl=$(deflection)_step=$(stepsize).mat", Dict(
-                    "Q" => sol.Q,
-                    "q" => sol.q, 
-                    "x" => sol.best_x,
-                    "lambda" => sol.best_λ
-                ); compress = true)
-
-            end
+            matwrite("mat/matsolution_rule=$(sol.update_formula)_defl=$(deflection)_step=$(stepsize).mat", Dict(
+                "Q" => sol.Q,
+                "q" => sol.q, 
+                "x" => sol.best_x,
+                "lambda" => sol.best_λ
+            ); compress = true)
 
         end
 
@@ -110,9 +104,6 @@ n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
 
 print("Enter K value for n=$(n): ")
 K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
-
-print("Deflection?[y/n] ")
-deflections = isequal("y",readline()) ? [true, false] : [false]
 
 print("Use different stepsize choices?[y/n] ")
 #=
@@ -259,5 +250,5 @@ matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
 opt_val = Inf   
 
 
-testing(n, K, deflections, Q, q, λ, μ, x, I_K, η, δ, 
+testing(n, K, Q, q, λ, μ, x, I_K, η, δ, 
         max_iter, ε, τ, stepsizes, F, A, opt_val)

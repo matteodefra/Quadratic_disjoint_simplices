@@ -21,8 +21,6 @@ export Solver
         G_t :: Array{Float64}                         Cumulative sum of the outer product of the gradients, keep only diagonal
         s_t :: Array{Float64}                         Keep track of the solution of the problem 2.4 (see report)
         H_t :: Array{Float64}                         Keep the diagonal δ*ones() vector in the struct, and add the s_t iteratively
-        d_i :: Array{Float64}                         Keep track of the current deflected direction
-        deflection :: Bool                            Whether to use deflection or not 
         Q :: Matrix{Float64}                          Q matrix of the function problem
         q :: Array{Float64}                           q vector of the function problem
         η :: Float64                                  Stepsize modified at each iteration
@@ -58,8 +56,6 @@ mutable struct Solver
     G_t :: Array{Float64}
     s_t :: Array{Float64}
     H_t :: Array{Float64}
-    d_i :: Array{Float64}
-    deflection :: Bool
     Q :: Matrix{Float64}
     q :: Array{Float64}
     η :: Float64
@@ -297,28 +293,6 @@ function λ_norm(current_λ, previous_λ)
 end
 
 
-
-#=
-    Compute the optimal γ resulting from the solution of the problem
-    
-        γ = argmin { ∥ γ g^i + (1 - γ) d^{i-1} ∥^2 }
-=#
-function compute_gamma(solver, subgrad, previous_d)
-
-    if solver.iteration == 1
-        
-        γ = ones((solver.n,1))
-    else 
-    
-        γ = ( previous_d.^(2) .- subgrad ) ./ ( subgrad .- previous_d ).^(2)
-    
-    end
-
-    return γ
-
-end
-
-
 #=
     Loop function which implements customized ADAGRAD algorithm. The code is the equivalent of Algorithm 3 
     presented in the report.
@@ -397,17 +371,6 @@ function my_ADAGRAD(solver)
             println("Subgrad is nan!")
         end
 
-        # Apply deflection if needed
-        if solver.deflection
-
-            previous_d = isempty(solver.grads) ? subgrad : solver.d_i
-
-            γ = compute_gamma(solver, subgrad, previous_d)
-
-            solver.d_i = map(*, γ, subgrad) .+  (o2 .- γ) .* previous_d
-
-        end
-
         # Revert subgrad direction if we gap is diverging
         current_gap < 0 ? subgrad = - subgrad : subgrad = subgrad
 
@@ -415,26 +378,14 @@ function my_ADAGRAD(solver)
         solver.grads = [solver.grads subgrad]
 
         # Modify η in the proper way
-        if solver.stepsize_choice == 0
-
-            solver.η = h
-
-        elseif solver.stepsize_choice == 1
-
+        if solver.stepsize_choice == 1
             solver.η = h / norm( solver.grads[:, end] )
-
         elseif solver.stepsize_choice == 2
-
             solver.η = α / (β + solver.iteration)
-
         elseif solver.stepsize_choice == 3
-
             solver.η = α / sqrt(solver.iteration)
-
         else 
-
             solver.η = isempty(solver.dual_values) ? 1 : ( (solver.Off_the_shelf_primal - solver.dual_values[end]) / norm(solver.grads[:,end])^2 )
-
         end
         
         #= 

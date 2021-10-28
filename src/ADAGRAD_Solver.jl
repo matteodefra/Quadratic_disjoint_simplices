@@ -159,7 +159,7 @@ function compute_update_rule(solver, H_t)
         # Update λ using the corresponding formula
         λ .= map(/, solver.η, G_t)
         
-        λ .= solver.deflection ? map(*, λ, solver.d_i) : map(*, λ, last_subgrad)
+        λ .= map(*, λ, last_subgrad)
 
         axpy!(1, solver.λ, λ)
 
@@ -178,7 +178,7 @@ function compute_update_rule(solver, H_t)
 
         λ .= map(/, solver.η, H_t)
 
-        λ .= solver.deflection ? map(*, λ, solver.d_i) : map(*, λ, solver.grads[:,end])
+        λ .= map(*, λ, solver.grads[:,end])
 
         axpy!(1, solver.λ, λ)
 
@@ -303,8 +303,8 @@ function my_ADAGRAD(solver)
 
     β = 1 # or rand(), or experimentations
 
-    α = 0.8 # or rand(), or experimentations
-
+    α = 0.1 # or rand(), or experimentations
+   
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
 
@@ -349,203 +349,229 @@ function my_ADAGRAD(solver)
 
     while solver.iteration < solver.max_iter
 
-        # Set starting time
-        starting_time = time()
+        try 
 
-        # Increment iteration
-        solver.iteration += 1
+            # Set starting time
+            starting_time = time()
 
-        # Save iteration
-        push!(solver.num_iterations, solver.iteration)
+            # Increment iteration
+            solver.iteration += 1
 
-        # Assign previous_λ
-        previous_λ = solver.λ
+            # Save iteration
+            push!(solver.num_iterations, solver.iteration)
 
-        # Assign previous_x
-        previous_x = solver.x
+            # Assign previous_λ
+            previous_λ = solver.λ
 
-        # Compute subgradient of ϕ (check report for derivation)
-        subgrad = get_subgrad(solver)
+            # Assign previous_x
+            previous_x = solver.x
 
-        if any( isnan, subgrad )
-            println("Subgrad is nan!")
-        end
+            # Compute subgradient of ϕ (check report for derivation)
+            subgrad = get_subgrad(solver)
 
-        # Revert subgrad direction if we gap is diverging
-        current_gap < 0 ? subgrad = - subgrad : subgrad = subgrad
+            if any( isnan, subgrad )
+                println("Subgrad is nan!")
+            end
 
-        # Store subgradient in matrix
-        solver.grads = [solver.grads subgrad]
+            # Revert subgrad direction if we gap is diverging
+            current_gap < 0 ? subgrad = - subgrad : subgrad = subgrad
 
-        # Modify η in the proper way
-        if solver.stepsize_choice == 1
-            solver.η = h / norm( solver.grads[:, end] )
-        elseif solver.stepsize_choice == 2
-            solver.η = α / (β + solver.iteration)
-        elseif solver.stepsize_choice == 3
-            solver.η = α / sqrt(solver.iteration)
-        else 
-            solver.η = isempty(solver.dual_values) ? 1 : ( (solver.Off_the_shelf_primal - solver.dual_values[end]) / norm(solver.grads[:,end])^2 )
-        end
-        
-        #= 
-            Solution of dual_function of problem 2.4 (see report)
-            Accumulate the squared summation into solver.s_t structure
-        =#
-        solver.s_t += subgrad
+            # Store subgradient in matrix
+            solver.grads = [solver.grads subgrad]
 
-        # Create a copy of solver.s_t (avoid modifying the original one)
-        s_t = solver.s_t 
-
-        # Compute s_t
-        s_t .= norm.(s_t)
-
-        # Sum them (hessian approximation)
-        H_t = solver.H_t
-
-        H_t .+= s_t
-
-        if any( isnan, H_t )
-            println("H_t is nan!")
-        end
-
-        diff = map(-, solver.λ, solver.q)
-
-        b = vcat(diff, o)
-
-        #= 
-            Solve linear system efficiently using \ of Julia: will automatically use techniques like 
-            backward and forward substitution to optimize the computation    
-        =# 
-        x_μ = \(solver.F, b)
-
-        if any( isnan, x_μ )
-            println("x_μ is nan!")
-        end
-
-        solver.x, solver.μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
-
-        #=
-            Compute the update rule for the lagrangian multipliers λ: can use 
-            one among the three showed, then soft threshold the result
-        =#
-        solver.λ = compute_update_rule(solver, H_t)
-        
-        # Compute Lagrangian function value
-        ϕ_λ = dual_function(solver, solver.x, solver.λ)[1]
-
-        if any( isnan, solver.λ )
-            println("solver.λ is nan!")
-            break
-        elseif any( isnan, solver.x )
-            println("solver.x is nan!")
-            break
-        elseif isnan( ϕ_λ ) 
-            println("ϕ_λ is nan!")
-            break
-        end 
-
-        # Storing current relaxation value
-        push!(solver.dual_values, ϕ_λ)
-
-        # Compute \| x_t - x_{t-1} \|_2 and save it
-        push!(solver.x_distances, x_norm(previous_x, solver.x))
-
-        # Store timing result of this iteration
-        finish_time = time()    
-
-        # Compute timing needed for this iteration
-        time_step = finish_time - starting_time
+            # Modify η in the proper way
+            if solver.stepsize_choice == 1
+                solver.η = h / norm( solver.grads[:, end] )
+            elseif solver.stepsize_choice == 2
+                solver.η = α / (β + solver.iteration)
+            elseif solver.stepsize_choice == 3
+                solver.η = α / sqrt(solver.iteration)
+            else 
+                solver.η = isempty(solver.dual_values) ? 1 : ( (solver.Off_the_shelf_primal - solver.dual_values[end]) / norm(solver.grads[:,end])^2 )
+            end
             
-        # Save time step
-        push!(solver.timings, time_step)
+            #= 
+                Solution of dual_function of problem 2.4 (see report)
+                Accumulate the squared summation into solver.s_t structure
+            =#
+            solver.s_t += subgrad
 
-        # Compute current dual_gap
-        current_gap = solver.Off_the_shelf_primal - solver.dual_values[end]
+            # Create a copy of solver.s_t (avoid modifying the original one)
+            s_t = solver.s_t 
 
-        if isnan( current_gap )
-            println("Some NaN values detected")
-            break
-        end
+            # Compute s_t
+            s_t .= norm.(s_t)
 
-        # Update the best solution if conditions are met
-        if ϕ_λ > solver.best_dual && current_gap > 0
-            solver.best_dual = ϕ_λ
-            solver.best_iteration = solver.iteration
-            solver.best_x .= solver.x
-            solver.best_λ .= solver.λ
-        end
+            # Sum them (hessian approximation)
+            H_t = solver.H_t
 
-        # if current_gap > 0 && current_gap < 1e3
-        #     h = 25
-        # end
+            H_t .+= s_t
 
-        # if current_gap > 0 && current_gap < 5e2
-        #     h = 5
-        # end
+            if any( isnan, H_t )
+                println("H_t is nan!")
+            end
 
-        # if current_gap > 0 && current_gap < 1e2
-        #     h = 2
-        # end
+            diff = map(-, solver.λ, solver.q)
 
-        # if current_gap > 0 && current_gap < 1e1
-        #     h = 1e-2
-        # end
+            b = vcat(diff, o)
 
-        # if current_gap > 0 && current_gap < 1e-1
-        #     h = 1e-3
-        # end
-        
-        if current_gap > 0 && current_gap < 1e4
-            solver.stepsize_choice = 4
-        end
+            #= 
+                Solve linear system efficiently using \ of Julia: will automatically use techniques like 
+                backward and forward substitution to optimize the computation    
+            =# 
+            x_μ = \(solver.F, b)
 
-        # Store the current gap
-        push!(solver.gaps, current_gap)
+            if any( isnan, x_μ )
+                println("x_μ is nan!")
+            end
 
-        push!(solver.λ_distances, λ_norm(solver.λ, previous_λ))
+            solver.x, solver.μ = x_μ[1:solver.n], x_μ[solver.n+1 : solver.n + solver.K]
 
-        if current_gap > 0 && current_gap <= solver.τ
-            println("Found optimal dual gap")
-            # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+            #=
+                Compute the update rule for the lagrangian multipliers λ: can use 
+                one among the three showed, then soft threshold the result
+            =#
+            solver.λ = compute_update_rule(solver, H_t)
+            
+            # Compute Lagrangian function value
+            ϕ_λ = dual_function(solver, solver.x, solver.λ)[1]
+
+            if any( isnan, solver.λ )
+                println("solver.λ is nan!")
+                break
+            elseif any( isnan, solver.x )
+                println("solver.x is nan!")
+                break
+            elseif isnan( ϕ_λ ) 
+                println("ϕ_λ is nan!")
+                break
+            end 
+
+            # Storing current relaxation value
+            push!(solver.dual_values, ϕ_λ)
+
+            # Compute \| x_t - x_{t-1} \|_2 and save it
+            push!(solver.x_distances, x_norm(previous_x, solver.x))
+
+            # Store timing result of this iteration
+            finish_time = time()    
+
+            # Compute timing needed for this iteration
+            time_step = finish_time - starting_time
+                
+            # Save time step
+            push!(solver.timings, time_step)
+
+            # Compute current dual_gap
+            current_gap = solver.Off_the_shelf_primal - solver.dual_values[end]
+
+            if isnan( current_gap )
+                println("Some NaN values detected")
+                break
+            end
+
+            # Update the best solution if conditions are met
+            if ϕ_λ > solver.best_dual && current_gap > 0
+                solver.best_dual = ϕ_λ
+                solver.best_iteration = solver.iteration
+                solver.best_x .= solver.x
+                solver.best_λ .= solver.λ
+            end
+
+            # if current_gap > 0 && current_gap < 1e3
+            #     h = 25
+            # end
+
+            # if current_gap > 0 && current_gap < 5e2
+            #     h = 5
+            # end
+
+            # if current_gap > 0 && current_gap < 1e2
+            #     h = 2
+            # end
+
+            # if current_gap > 0 && current_gap < 1e1
+            #     h = 1e-2
+            # end
+
+            # if current_gap > 0 && current_gap < 1e-1
+            #     h = 1e-3
+            # end
+            
+            # if current_gap > 0 && current_gap < 1e4
+            #     solver.stepsize_choice = 4
+            # end
+
+            # Store the current gap
+            push!(solver.gaps, current_gap)
+
+            push!(solver.λ_distances, λ_norm(solver.λ, previous_λ))
+
+            if current_gap > 0 && current_gap <= solver.τ
+                println("Found optimal dual gap")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+                push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
+                break   
+            end
+
+            if solver.λ_distances[end] < solver.ε && solver.iteration > 10
+                println("λ not changing anymore")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+                push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
+                break   
+            end
+
+            if norm(subgrad) < solver.ε
+                println("Subgradient is zero")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+                push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
+                break   
+            end
+
+            if current_gap < -1e5
+                # Gap is diverging, reset λ
+                solver.λ = ones((solver.n,1))
+            end
+
+            if (solver.iteration == 1) || (solver.iteration % 1 == 0)
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
+            end
+
+            # Each one thousand iterations we clean some memory calling the Garbage collector
+            if solver.iteration % 1000 == 0
+                GC.gc()
+            end
+
+            # Add to DataFrame to save results
             push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
-            break   
-        end
 
-        if solver.λ_distances[end] < solver.ε && solver.iteration > 10
-            println("λ not changing anymore")
-            # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
-            push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
-            break   
-        end
+        catch y
 
-        if norm(subgrad) < solver.ε
-            println("Subgradient is zero")
-            # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
-            push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
-            break   
-        end
+            if isa(y, InterruptException)
 
-        if current_gap < -1e5
-            # Gap is diverging, reset λ
-            solver.λ = ones((solver.n,1))
-        end
+                GC.gc()
 
-        if (solver.iteration == 1) || (solver.iteration % 10 == 0)
-            # Log result of the current iteration
-            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" solver.iteration solver.timings[end] solver.dual_values[end] solver.x_distances[end] solver.λ_distances[end] current_gap
-        end
+                # Log total time and iterations
+                print("\n")
+                print("Iterations: $(solver.iteration)\tTotal time: $(round(sum(solver.timings), digits=6))\n")
 
-        # Each one thousand iterations we clean some memory calling the Garbage collector
-        if solver.iteration % 1000 == 0
-            GC.gc()
-        end
+                # Save results in CSV file
+                CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula)_alpha=$(α)_step=$(solver.stepsize_choice).csv", df)
 
-        # Add to DataFrame to save results
-        push!(df, [solver.iteration, solver.timings[end], solver.dual_values[end], solver.x_distances[end], solver.λ_distances[end], current_gap ])
+                return solver
+
+            else
+
+                continue
+            
+            end
+            
+
+        end
 
     end
 
@@ -556,7 +582,7 @@ function my_ADAGRAD(solver)
     print("Iterations: $(solver.iteration)\tTotal time: $(round(sum(solver.timings), digits=6))\n")
 
     # Save results in CSV file
-    CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula)_defl=$(solver.deflection)_step=$(solver.stepsize_choice).csv", df)
+    CSV.write("logs/results_n=$(solver.n)_K=$(solver.K)_update=$(solver.update_formula)_alpha=$(α)_step=$(solver.stepsize_choice).csv", df)
 
     return solver
 

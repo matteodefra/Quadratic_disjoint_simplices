@@ -6,7 +6,7 @@ using Random
 using MAT
 using .Utils
 using .ADAGRAD_Solver
-using .ConvexSolution
+
 
 function testing(n, K, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
     #------------------------------------------------------#
@@ -76,7 +76,7 @@ function testing(n, K, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, τ, stepsizes
             display(dual_gap)
             print("\n")
 
-            matwrite("mat/matsolution_rule=$(sol.update_formula)_defl=$(deflection)_step=$(stepsize).mat", Dict(
+            matwrite("mat/matsolution_rule=$(sol.update_formula)_step=$(stepsize).mat", Dict(
                 "Q" => sol.Q,
                 "q" => sol.q, 
                 "x" => sol.best_x,
@@ -97,7 +97,7 @@ end
 print("Use stored .mat?[y/n] ")
 y = readline()
 
-vars = y == "y" ? matread("mat/structs_n10000_K10.mat") : []
+vars = y == "y" ? matread("mat/structs_n1000_K20.mat") : []
 
 print("Input n value: ")
 n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
@@ -105,7 +105,6 @@ n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
 print("Enter K value for n=$(n): ")
 K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
 
-print("Use different stepsize choices?[y/n] ")
 #=
     0: Constant step size                   η = h               with h > 0
     1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
@@ -113,7 +112,7 @@ print("Use different stepsize choices?[y/n] ")
     3: Nonsummable diminishing              η = α / √t          with α > 0 
     4: Optimal                              η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
 =#
-stepsizes = isequal("y",readline()) ? [0, 1, 2, 3, 4] : [2]
+stepsizes = [2]
 
 println("Initializing random disjoint sets")
 
@@ -186,7 +185,7 @@ const η = 1
 δ = 1e-16 # or abs(rand())
 
 # Initialize max_iter
-const max_iter = 100000
+const max_iter = 10000
 
 # Initialize ε
 const ε = 1e-14
@@ -244,10 +243,10 @@ matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
 # opt_val = 1.202577640305848e+05
 
 # Optimal value for structs_n1000_K20
-# opt_val = 9.260941479664706e+04
+opt_val = 9.260941479664706e+04
 
 # Optimal value for structs_n10000_K1
-opt_val = Inf   
+# opt_val = Inf   
 
 
 testing(n, K, Q, q, λ, μ, x, I_K, η, δ, 

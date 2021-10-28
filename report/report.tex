@@ -620,6 +620,21 @@ We can show some plots and timing results of the experiments reported in the tab
 \hspace{0pt}
 \vfill
 
+% \begin{table}[H]
+%   \centering
+%   \resizebox{\columnwidth}{!}{%
+%   \begin{tabular}{| c | c | c | c | c | c | c | c | c | c |}
+%     \hline
+%     $n$ & $K$ & {\itshape Update rule} & {\itshape Total iterations} & {\itshape total time (sec)} & {\itshape Best iteration} & {\itshape Best } $\phi(\lambda) - f(x^*)$ & {\itshape Best } $\psi(\lambda)$ & {\itshape Best } $\| \lambda_{t} - \lambda_{t-1} \|$ & {\itshape Best } $\| x_{t} - x_{t-1} \|$ \\
+%     \hline
+%     \multirow{2}{*}{$1000$} & \multirow{2}{*}{$10$} & $1$ & $2454$ & $33.1$ $s$ & $2454$ & $9.639$$e$$-08$ & $9.261$$e$$+04$ & $6.720$$e$$-12$ & $2.721$$e$$-10$ \\
+%     \cline{3-10}
+%      & & $3$ & $5713$ & $116.9$ $s$ & $5713$ & $1.434$$e$$-08$ & $9.261$$e$$+04$ & $1.922$$e$$-07$ & $1.041$$e$$-11$ \\
+%     \hline
+%   \end{tabular}
+%   }%
+% \end{table}
+
 \begin{minipage}{.7\textwidth}
   \begin{figure}[H]
     \centering
@@ -650,41 +665,41 @@ We can show some plots and timing results of the experiments reported in the tab
       \hline
     \end{tabular}
     }%
-    \caption{\centering Sum up table}
+    \caption{\centering Sum up table for $n=5000$, $K=10$ and rule $1$}
     \label{tab:n-5000-K-10-rule-1}
   \end{table}
 \end{minipage}
 
-
-\begin{figure}[H]
-  \begin{minipage}{0.49\textwidth}
-    \centering
-    \includegraphics[scale=0.33]{pics/n=5000_K=10_dual_rule=1.png}
-    \caption{Dual value with update rule $1$, $n=5000$ and $K=10$}
-    \label{fig:rule-1-n-5000-k-10-dual}
-  \end{minipage}
-  \begin{minipage}{0.49\textwidth}
-    \centering
-    \includegraphics[scale=0.33]{pics/n=5000_K=10_lambda_rule=1.png}
-    \caption{Norms with update rule $1$, with $n=5000$ and $K=10$}
-    \label{fig:rule-1-n-5000-k-10-norm}
-  \end{minipage}  
-\end{figure}
+\vspace{1em}
 
 \begin{changemargin}{3.5cm}{3.5cm}
-  As we can see by the results of the update rule 1, the slope of the curve change in the tail, reaching an optimal dual gap. This is due to the big function value we have 
-  and the stepsize we employ. In the tail, we can see how the value start oscillating near the optimal achieving the desired dual gap after a few iterations.\\
-  The same holds for the norms of the variables, oscillating but achieving an almost zero change in the tail.
+  Let's look in depth now at the results using the update rule $1$, on a problem of dimension $n=5000$ and $K=10$. As we can see from above, there are different considerations to do.
+  First of all we can see how we are capable of reaching the desired dual gap, in the order of $10^{-6}$.\\
+  To reach the optimal solution, the experimentation took the following approach:
+  \begin{itemize}
+    \item First of all, we created the problem structures ($Q$, $I_K$, $A$) and stored them in a \textit{.mat} file;
+    \item Then, we used the structures created on \texttt{YALMIP} to compute the optimal $p^*$ of the primal problem;
+    \item Obtained the solution, this was imported in the \textit{Julia} code and used to compute the dual gap;
+  \end{itemize}
+  In order to get the best out from our solver, we tried different times by changing the hyperparameters. For the update rule $1$, we decided to focus on the {\itshape Nonsummable diminishing} 
+  stepsize rule and then on the {\itshape Polyak} stepsize rule.\\
+  We discovered that using \textit{Polyak} stepsize is necessary in the tail of our convergence, in order to avoid divergence due to big steps.\\
+  Instead, in the starting part of our algorithm, an optimal value we found for the only hyperparameter $\alpha$ is $0.3$. In this way, we perform neither too big steps nor too small steps, 
+  reaching the optimal solution in a fair amount of iterations.\\
+  Changing also slightly the hyperparameter $\alpha$ results in an uncontrolled behavior (for example if we put too small $\alpha$) or in the other case in a too slow behavior (when we give $\alpha$
+  an high value).\\
+  We tried also using \textit{Polyak} stepsize from iteration $0$, but we noticed that convergence was slow and we could improve it by using the above approach.\\
+  In addition, we tried to use the classical {\itshape Square summable but not summable} rule, which give us a very slow convergence rate, even changing the value of $\alpha$. Using this stepsize 
+  rule requires a lot of time and iterations, but from theory we know that even if slow the convergence is guaranteed.
 \end{changemargin}
-
 
 \vfill
 \hspace{0pt}
 
 \newpage
 
-\hspace{0pt}
 \vfill
+\hspace{0pt}
 
 \begin{minipage}{.7\textwidth}
   \begin{figure}[H]
@@ -716,37 +731,66 @@ We can show some plots and timing results of the experiments reported in the tab
       \hline
     \end{tabular}
     }%
-    \caption{\centering Sum up table}
+    \caption{\centering Sum up table for $n=5000$, $K=10$ and rule $3$}
     \label{tab:n-5000-K-10-rule-3}
   \end{table}
 \end{minipage}
 
-
-\begin{figure}[H]
-  \begin{minipage}{0.49\textwidth}
-    \centering
-    \includegraphics[scale=0.33]{pics/n=5000_K=10_dual_rule=3.png}
-    \caption{Dual value with update rule $3$, $n=5000$ and $K=10$}
-    \label{fig:rule-3-n-5000-k-10-dual}
-  \end{minipage}
-  \begin{minipage}{0.49\textwidth}
-    \centering
-    \includegraphics[scale=0.33]{pics/n=5000_K=10_lambda_rule=3.png}
-    \caption{Norms with update rule $3$, with $n=5000$ and $K=10$}
-    \label{fig:rule-3-n-5000-k-10-norm}
-  \end{minipage}  
-\end{figure}
+\vspace{1cm}
 
 \begin{changemargin}{3.5cm}{3.5cm}
-  As we can see by the results of the update rule 3, here we perform different steps, by adjusting the value of $h$ during the optimization. Indeed the slope of the curve
-  change also in the end, this time with a more high value. The same happens also in this case, we start oscillating around the optimal value until we get the desired dual gap.\\
-  The norms too oscillate around very small values.
+  In this other case, we approach the same problem dimension but this time using the update rule $3$. This update rule has a totally different behavior w.r.t. the above one.\\ 
+  We tried using both the summable and nonsummable rules, but changing the value of $\alpha$ in this case does not led us to a good optimization. Indeed, we noticed how the solution can diverge 
+  into high negative gaps or remain fixed at some high gap value, showing no improvement for a lot of iterations (in the order of $10^3$).\\
+  We thought that this behavior comes from the use of the "regularizer" matrix $H_t$, which is used at the denominator to scale the step at each iteration based on the accumulated gradient. To deal with 
+  this problem, we decided to change the value of the hyperparameter $\delta$, added to the matrix $H_t$. We tried scaling it both in bigger values ($> 1$) and smaller values ($< 1$), founding in the 
+  end the value of $\delta = 10^{-16}$. Even changing $\delta$ and $\alpha$ brings no improvement when using this kind of rule.\\
+  Analyzing the values, the problem is indeed in using a $< 1$ stepsize and the scaling matrix $H_t$, which scale too much the update part and consequently do not update $\lambda$. To overcome 
+  this situation, we switched to the {\itshape constant step rule}, using a possible high fixed value of $h$ to perform big steps.\\
+  Also in this situation, we did different experimentation using possible values of $h$.\\
+  Similar as before, keeping an high value of $h$ in the tail is not the best approach, since we risk of diverging from the optimal gap and as a consequence never reach smaller values.\\
+  The solution to this problem was to modify the value of $h$ iteratively during the optimization. Having the optimal $p^*$ at our disposal, we can use the dual gap computed at each step to decrease the 
+  magnitude of $h$ as soon as we approach the optimal gap.\\
+  Using this pattern, we used the following values of $h$:
+  \[ \left[ 200, 25, 5, 2, 10^{-2}, 10^{-3} \right] \]
 \end{changemargin}
 
 \vfill
 \hspace{0pt}
 
+% \begin{figure}[H]
+%   \begin{minipage}{0.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.33]{pics/n=5000_K=10_dual_rule=1.png}
+%     \caption{Dual value with update rule $1$, $n=5000$ and $K=10$}
+%     \label{fig:rule-1-n-5000-k-10-dual}
+%   \end{minipage}
+%   \begin{minipage}{0.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.33]{pics/n=5000_K=10_lambda_rule=1.png}
+%     \caption{Norms with update rule $1$, with $n=5000$ and $K=10$}
+%     \label{fig:rule-1-n-5000-k-10-norm}
+%   \end{minipage}  
+% \end{figure}
+
+% \begin{figure}[H]
+%   \begin{minipage}{0.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.33]{pics/n=5000_K=10_dual_rule=3.png}
+%     \caption{Dual value with update rule $3$, $n=5000$ and $K=10$}
+%     \label{fig:rule-3-n-5000-k-10-dual}
+%   \end{minipage}
+%   \begin{minipage}{0.49\textwidth}
+%     \centering
+%     \includegraphics[scale=0.33]{pics/n=5000_K=10_lambda_rule=3.png}
+%     \caption{Norms with update rule $3$, with $n=5000$ and $K=10$}
+%     \label{fig:rule-3-n-5000-k-10-norm}
+%   \end{minipage}  
+% \end{figure}
+
+
 \newpage
+
 
 % \begin{table}[H]
 %   \centering

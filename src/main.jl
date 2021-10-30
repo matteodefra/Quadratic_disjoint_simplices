@@ -97,7 +97,7 @@ end
 print("Use stored .mat?[y/n] ")
 y = readline()
 
-vars = y == "y" ? matread("mat/structs_n1000_K20.mat") : []
+vars = y == "y" ? matread("mat/structs_n5000_K1000.mat") : []
 
 print("Input n value: ")
 n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
@@ -112,7 +112,7 @@ K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
     3: Nonsummable diminishing              η = α / √t          with α > 0 
     4: Optimal                              η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
 =#
-stepsizes = [2]
+stepsizes = [3]
 
 println("Initializing random disjoint sets")
 
@@ -151,6 +151,18 @@ end
 
 # I_K contains all the I^k required to create the simplices constraints
 I_K = y == "y" ? vars["I"] : initialize_sets(indexes, K, n)
+
+I_K = vec(I_K)
+
+for i=1:1:length(I_K)
+    if (typeof(I_K[i]) == Float64) || (typeof(I_K[i]) == Int64) 
+        println("Match")
+        I_K[i] = [I_K[i]]
+    end
+
+    map(y -> round.(Int, y) , I_K[i])
+end
+
 
 println("Set of I_K arrays:")
 display(I_K)
@@ -239,11 +251,25 @@ matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
 );compress = true) 
 
 
+# Optimal value for structs_n1000_K20
+# opt_val = 9.260941479664706e+04
+
+# Optimal value for structs_n1000_K100
+# opt_val = 2.365974232287892e+06
+
+# Optimal value for structs_n1000_K500
+# opt_val = 6.158714971017132e+07
+
 # Optimal value for structs_n5000_K10
 # opt_val = 1.202577640305848e+05
 
-# Optimal value for structs_n1000_K20
-opt_val = 9.260941479664706e+04
+# Optimal value for structs_n5000_K1000
+opt_val = 1.228530174589726e+09
+# time 656.5 seconds
+
+# Optimal value for structs_n5000_K2500
+# opt_val = 7.759039617015183e+09
+# time 412.8 seconds
 
 # Optimal value for structs_n10000_K1
 # opt_val = Inf   

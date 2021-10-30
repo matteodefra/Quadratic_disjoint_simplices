@@ -1,6 +1,6 @@
 import pandas as pd
 
-update1 = pd.read_csv('results/n=1000/results_n=1000_K=20_update=3_defl=false_step=3.csv', delimiter=',')
+update1 = pd.read_csv('saved_logs/results_n=1000_K=500_update=1_alpha=5_step=3.csv', delimiter=',')
 # update2 = pd.read_csv('results/pd_Q/n=50/logs/results_n=50_K=40_update=1_defl=true.csv', delimiter=',')
 # update3 = pd.read_csv('results/pd_Q/n=50/logs/results_n=50_K=40_update=2_defl=false.csv', delimiter=',')
 

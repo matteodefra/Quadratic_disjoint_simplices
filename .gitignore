@@ -1,3 +1,5 @@
 /mat
-!report/report.pdf
-report/*
+!/report/report.pdf
+/report
+/results
+/saved_logs

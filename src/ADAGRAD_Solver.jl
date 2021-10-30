@@ -299,26 +299,20 @@ end
 =#  
 function my_ADAGRAD(solver)
 
-    h = 10 # or rand(), or experimentations
+    h = 1 # or rand(), or experimentations
 
     β = 1 # or rand(), or experimentations
 
-    α = 0.1 # or rand(), or experimentations
-   
+    α = 20 # or rand(), or experimentations
+
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
-
-    # To compute γ
-    o2 = ones((solver.n,1))
 
     # H_t allocation
     H_t = Array{Float64,1}(undef, solver.n)
 
     # s_t allocation
     s_t = Array{Float64,1}(undef, solver.n)
-
-    # gamma allocation
-    γ = Array{Float64,1}(undef, solver.n)
 
     # Log result of each iteration
     print("Iteration\tTime\t\tL value\t\tx_norm\t\tλ_norm\t\tcurrent gap\n\n")
@@ -498,9 +492,13 @@ function my_ADAGRAD(solver)
             #     h = 1e-3
             # end
             
-            # if current_gap > 0 && current_gap < 1e4
-            #     solver.stepsize_choice = 4
-            # end
+            if current_gap > 0 && current_gap < 1e5
+                solver.stepsize_choice = 2
+            end
+
+            if current_gap > 0 && current_gap < 1e3
+                solver.stepsize_choice = 4
+            end
 
             # Store the current gap
             push!(solver.gaps, current_gap)

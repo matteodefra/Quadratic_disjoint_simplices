@@ -76,12 +76,12 @@ function testing(n, K, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, τ, stepsizes
             display(dual_gap)
             print("\n")
 
-            matwrite("mat/matsolution_rule=$(sol.update_formula)_step=$(stepsize).mat", Dict(
-                "Q" => sol.Q,
-                "q" => sol.q, 
-                "x" => sol.best_x,
-                "lambda" => sol.best_λ
-            ); compress = true)
+            # matwrite("mat/matsolution_rule=$(sol.update_formula)_step=$(stepsize).mat", Dict(
+            #     "Q" => sol.Q,
+            #     "q" => sol.q, 
+            #     "x" => sol.best_x,
+            #     "lambda" => sol.best_λ
+            # ); compress = true)
 
         end
 
@@ -97,7 +97,7 @@ end
 print("Use stored .mat?[y/n] ")
 y = readline()
 
-vars = y == "y" ? matread("mat/structs_n5000_K1000.mat") : []
+vars = y == "y" ? matread("mat/structs_n10000_K2500.mat") : []
 
 print("Input n value: ")
 n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
@@ -110,7 +110,7 @@ K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
     1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
     2: Square summable but not summable     η = α / (b + t)     with α > 0 and b ≥ 0
     3: Nonsummable diminishing              η = α / √t          with α > 0 
-    4: Optimal                              η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
+    4: Polyak                               η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
 =#
 stepsizes = [3]
 
@@ -152,11 +152,11 @@ end
 # I_K contains all the I^k required to create the simplices constraints
 I_K = y == "y" ? vars["I"] : initialize_sets(indexes, K, n)
 
+# Fix I_K structure
 I_K = vec(I_K)
 
 for i=1:1:length(I_K)
     if (typeof(I_K[i]) == Float64) || (typeof(I_K[i]) == Int64) 
-        println("Match")
         I_K[i] = [I_K[i]]
     end
 
@@ -252,27 +252,44 @@ matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
 
 
 # Optimal value for structs_n1000_K20
-# opt_val = 9.260941479664706e+04
+# opt_val = 9.260942226793662e+04
+# time 1.091 seconds 
+# iterations 21
 
 # Optimal value for structs_n1000_K100
-# opt_val = 2.365974232287892e+06
+# opt_val = 2.365974236431491e+06
+# time 1.242 seconds
+# iterations 17 
 
 # Optimal value for structs_n1000_K500
-# opt_val = 6.158714971017132e+07
+# opt_val = 6.158714971181200e+07
+# time 0.938 seconds
+# iterations 17
 
 # Optimal value for structs_n5000_K10
-# opt_val = 1.202577640305848e+05
+# opt_val = 1.202577688949518e+05
+# time 41.414 seconds
+# iterations 23
 
 # Optimal value for structs_n5000_K1000
-opt_val = 1.228530174589726e+09
-# time 656.5 seconds
+# opt_val = 1.228530174591432e+09
+# time 76.352 seconds
+# iterations 26
 
 # Optimal value for structs_n5000_K2500
-# opt_val = 7.759039617015183e+09
-# time 412.8 seconds
+# opt_val = 7.759039617014161e+09
+# time 69.911 seconds
+# iterations 28
 
-# Optimal value for structs_n10000_K1
-# opt_val = Inf   
+# Optimal value for structs_n10000_K10
+# opt_val = 2.428012021226884e+05
+# time 401.688 seconds
+# iterations 28
+
+# Optimal value for structs_n10000_K2500
+opt_val = 1.544997631806922e+10
+# time 971.025 seconds
+# iterations 34
 
 
 testing(n, K, Q, q, λ, μ, x, I_K, η, δ, 

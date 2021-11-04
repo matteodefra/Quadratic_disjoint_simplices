@@ -2,6 +2,7 @@ import matplotlib
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 
 matplotlib.rcParams['figure.dpi'] = 300
 matplotlib.rcParams['figure.figsize'] = 11.7,8.27
@@ -46,7 +47,7 @@ sns.set_theme(style="ticks", rc = custom_conf)
 sns.set_palette('pastel')
 
 
-df = pd.read_csv("saved_logs/results_n=1000_K=500_update=1_alpha=5_step=3.csv", delimiter=',')
+df = pd.read_csv("results/n=10000/results_n=10000_K=2500_update=1_alpha=1.0e-6_step=2.csv", delimiter=',')
 
 
 axes = sns.lineplot(
@@ -65,7 +66,7 @@ axes.set_yscale('log', base=10)
 
 axes.set_ylabel(r"""$f(x^*)$ - $\phi (\lambda)$""")
 
-axes.figure.savefig("saved_logs/n=1000_K=500_alpha=5_gap_rule=1.png")
+axes.figure.savefig("results/n=10000/n=10000_K=2500_gap_rule=1.png")
 plt.clf()
 
 
@@ -86,7 +87,7 @@ axes.set_xscale('log', base=10)
 
 axes.set_ylabel(r"""$\phi (\lambda)$""")
 
-axes.figure.savefig("results/n=1000/n=1000_K=500_dual_rule=1.png")
+axes.figure.savefig("results/n=10000/n=10000_K=2500_dual_rule=1.png")
 plt.clf()
 
 
@@ -105,4 +106,4 @@ ax2.set_yscale('log', base=10)
 ax2.set_ylabel(r"""$\lambda$ residual""")
 ax.set_ylabel(r"""$x$ residual""")
 
-ax.figure.savefig("results/n=1000/n=1000_K=500_lambda_rule=1.png")
+ax.figure.savefig("results/n=10000/n=10000_K=2500_lambda_rule=1.png")

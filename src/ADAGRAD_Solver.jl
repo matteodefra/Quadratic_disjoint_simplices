@@ -299,11 +299,11 @@ end
 =#  
 function my_ADAGRAD(solver)
 
-    h = 1 # or rand(), or experimentations
+    h = 1000 # or rand(), or experimentations
 
     β = 1 # or rand(), or experimentations
 
-    α = 20 # or rand(), or experimentations
+    α = 50 # or rand(), or experimentations
 
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
@@ -472,34 +472,6 @@ function my_ADAGRAD(solver)
                 solver.best_λ .= solver.λ
             end
 
-            # if current_gap > 0 && current_gap < 1e3
-            #     h = 25
-            # end
-
-            # if current_gap > 0 && current_gap < 5e2
-            #     h = 5
-            # end
-
-            # if current_gap > 0 && current_gap < 1e2
-            #     h = 2
-            # end
-
-            # if current_gap > 0 && current_gap < 1e1
-            #     h = 1e-2
-            # end
-
-            # if current_gap > 0 && current_gap < 1e-1
-            #     h = 1e-3
-            # end
-            
-            if current_gap > 0 && current_gap < 1e5
-                solver.stepsize_choice = 2
-            end
-
-            if current_gap > 0 && current_gap < 1e3
-                solver.stepsize_choice = 4
-            end
-
             # Store the current gap
             push!(solver.gaps, current_gap)
 
@@ -531,7 +503,7 @@ function my_ADAGRAD(solver)
 
             if current_gap < -1e5
                 # Gap is diverging, reset λ
-                solver.λ = ones((solver.n,1))
+                solver.λ = solver.best_λ
             end
 
             if (solver.iteration == 1) || (solver.iteration % 1 == 0)

@@ -3,3 +3,4 @@ report/*
 !report/report.pdf
 /results
 /saved_logs
+/logs

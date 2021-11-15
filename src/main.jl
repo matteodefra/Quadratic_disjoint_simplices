@@ -97,7 +97,7 @@ end
 print("Use stored .mat?[y/n] ")
 y = readline()
 
-vars = y == "y" ? matread("mat/structs_n10000_K2500.mat") : []
+vars = y == "y" ? matread("mat/structs_n1000_K20.mat") : []
 
 print("Input n value: ")
 n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
@@ -112,7 +112,7 @@ K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
     3: Nonsummable diminishing              η = α / √t          with α > 0 
     4: Polyak                               η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
 =#
-stepsizes = [3]
+stepsizes = [2]
 
 println("Initializing random disjoint sets")
 
@@ -252,7 +252,7 @@ matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
 
 
 # Optimal value for structs_n1000_K20
-# opt_val = 9.260942226793662e+04
+opt_val = 9.260942226793662e+04
 # time 1.091 seconds 
 # iterations 21
 
@@ -287,7 +287,7 @@ matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
 # iterations 28
 
 # Optimal value for structs_n10000_K2500
-opt_val = 1.544997631806922e+10
+# opt_val = 1.544997631806922e+10
 # time 971.025 seconds
 # iterations 34
 

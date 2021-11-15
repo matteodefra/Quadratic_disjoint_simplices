@@ -87,7 +87,7 @@ end
 
 =#
 function dual_function(solver, previous_x, previous_λ)
-    return BLAS.dot(solver.n, previous_x, 1, BLAS.symv('U' ,solver.Q, previous_x),1) + BLAS.dot(solver.n, solver.q, 1, previous_x, 1) + BLAS.dot(solver.n, previous_λ, 1, previous_x, 1)
+    return BLAS.dot(solver.n, previous_x, 1, BLAS.symv('U' ,solver.Q, previous_x),1) + BLAS.dot(solver.n, solver.q, 1, previous_x, 1) - BLAS.dot(solver.n, previous_λ, 1, previous_x, 1)
 end
 
 #=
@@ -237,7 +237,7 @@ function get_subgrad(solver)
 
     if difference <= 1e-12
         # The gradient exists and coincide with the normal derivation of ϕ(λ_{t-1})
-        return solver.x
+        return - solver.x
     end
 
     # Otherwise compute the maximum norm between a and b
@@ -248,11 +248,11 @@ function get_subgrad(solver)
 
     if min_norm == a_norm
 
-        return a
+        return - a
 
     else 
 
-        return b
+        return - b
 
     end
 
@@ -303,7 +303,7 @@ function my_ADAGRAD(solver)
 
     β = 1 # or rand(), or experimentations
 
-    α = 50 # or rand(), or experimentations
+    α = 20 # or rand(), or experimentations
 
     # To create vector b = [λ_{t-1} - q, b]
     o = ones((solver.K,1))
@@ -368,7 +368,7 @@ function my_ADAGRAD(solver)
             end
 
             # Revert subgrad direction if we gap is diverging
-            current_gap < 0 ? subgrad = - subgrad : subgrad = subgrad
+            # current_gap < 0 ? subgrad = - subgrad : subgrad = subgrad
 
             # Store subgradient in matrix
             solver.grads = [solver.grads subgrad]

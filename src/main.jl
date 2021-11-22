@@ -1,123 +1,482 @@
-include("./ADAGRAD_Solver.jl")
-include("./Utils.jl")
-
 using LinearAlgebra
 using Random
 using MAT
-using .Utils
-using .ADAGRAD_Solver
+using Printf
+using DataFrames
+using CSV
+
+#=
+    Compute the dual function value given the minimum x found and the value of λ
+        
+        ϕ(λ) = x' Q x + q' x - λ' x 
+
+=#
+function dual_function(Q, q, x, λ)
+    return (dot(x, Q * x) + dot(q, x) - dot(λ, x))[1]
+end
 
 
-function testing(n, K, Q, q, λ, μ, x, I_K, η, δ, max_iter, ε, τ, stepsizes, F, A, primal_optimal)
-    #------------------------------------------------------#
-    #----------     Create problem structs     ------------#
-    #------------------------------------------------------#
 
-    Iden = ones((n,1))
+#=
+    Compute the subgradient of -ϕ() at the point λ_{t-1}. The subgradient is taken by computing the left limit 
+    and the right limit and then choosing the maximum norm of them 
 
-    for stepsize in stepsizes
+        s = argmin { ∥ s ∥ : s ∈ ∂ϕ(λ_{t-1}) }
 
-        for update_rule in [1]
+    where the set of subgradient is the interval [a, b] where 
 
-            # Create three different struct to exploit the three update rule
-            sol = ADAGRAD_Solver.Solver(
-                n, 0, λ, μ, K, I_K, x, Array{Float64}(undef, n, 0), # grads 
-                fill(0.0, n), # G_t 
-                fill(0.0, n), # s_t
-                δ .* Iden, # H_t
-                Q, q, η, δ, max_iter, ε, τ, -Inf, # best_dual
-                0, # best_iteration
-                x, # best_x
-                λ, # best_λ
-                Vector{Float64}(), # num_iterations
-                Vector{Float64}(), # dual_values
-                Vector{Float64}(), # λ_distances
-                Vector{Float64}(), # x_distances
-                Vector{Float64}(), # timings
-                Vector{Float64}(), # gaps
-                update_rule, # update_rule
-                stepsize, # stepsize_choice
-                F, # Best factorization
-                A, # Constraint matrix
-                primal_optimal # Primal optimal value
-            )
+        a = lim λ -> λ_{t-1}^-  ( ϕ(λ) - ϕ(λ_{t-1}) ) / (λ - λ_{t-1})
 
-            #------------------------------------------------------#
-            #--------     Calculate custom solution     -----------#
-            #------------------------------------------------------#
+        b = lim λ -> λ_{t-1}^+  ( ϕ(λ) - ϕ(λ_{t-1}) ) / (λ - λ_{t-1})
 
+    If the a-b ≈ 0, then the gradient exists and is simply given by 
 
-            # Now calculate the results of ADAGRAD in the three different fashion way
-            sol = @time ADAGRAD_Solver.my_ADAGRAD(sol)
+        g^t = ∇_λ ϕ(λ) = - x
 
-            #------------------------------------------------------#
-            #------------     Results for rules     ---------------#
-            #------------------------------------------------------#
+=#
+function get_subgrad(Q, q, x, λ)
 
-            print("\n\n\n\n")
-            print("------------------- Rule $(sol.update_formula) results -------------------\n\n")
+    # First create the values λ_{t-1}^- and λ_{t-1}^+ with an ϵ > 0
+    ϵ = 1e-2
 
-            println("Optimal x found (rule $(sol.update_formula)):")
-            display(sol.best_x)
-            print("\n")
+    λ_minus = λ .- ϵ
+    λ_plus = λ .+ ϵ
 
-            println("Optimal λ found (rule $(sol.update_formula)):")
-            display(sol.best_λ)
-            print("\n")
+    # Compute the value of a
+    a = dual_function(Q, q, x, λ) - dual_function(Q, q, x, λ)
+    a = a ./ (λ_minus - λ)
 
-            println("Best value of dual function at iteration $(sol.best_iteration) (rule $(sol.update_formula)):")
-            display(sol.best_dual)
-            print("\n")
+    # Compute value of b
+    b = dual_function(Q, q, x, λ) - dual_function(Q, q, x, λ)
+    b = b ./ (λ_plus - λ)
 
-            println("Duality gap between f( x* ) and ϕ( λ ) (rule $(sol.update_formula)):")
+    # If norm(a-b) ≈ 0, then the gradient exist
+    difference = norm(a-b)
 
-            dual_gap = primal_optimal - sol.best_dual
+    if difference <= 1e-12
+        # The gradient exists and coincide with the normal derivation of ϕ(λ_{t-1})
+        return - x
+    end
 
-            display(dual_gap)
-            print("\n")
+    # println("Subgradient with limit")
 
-            # matwrite("mat/matsolution_rule=$(sol.update_formula)_step=$(stepsize).mat", Dict(
-            #     "Q" => sol.Q,
-            #     "q" => sol.q, 
-            #     "x" => sol.best_x,
-            #     "lambda" => sol.best_λ
-            # ); compress = true)
+    # Otherwise compute the maximum norm between a and b
+    a_norm = norm(a)
+    b_norm = norm(b)
 
-        end
+    min_norm = min(a_norm, b_norm)
+
+    return (sum.(a + b))./2
+
+    if min_norm == a_norm
+
+        return - a
+
+    else 
+
+        return - b
 
     end
 
 end
 
 
+#=
+    Compute 
 
-#------------------------------------------------------#
-#---------     Initialize all parameters    -----------#
-#------------------------------------------------------#
-print("Use stored .mat?[y/n] ")
-y = readline()
+        ∥ x_t - x_{t-1} ∥_2
 
-vars = y == "y" ? matread("mat/structs_n1000_K20.mat") : []
+=#
+function x_norm(previous_x, current_x)
 
-print("Input n value: ")
-n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
+    res = current_x .- previous_x
 
-print("Enter K value for n=$(n): ")
-K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
+    distance = norm(res)
+
+    return distance
+
+end
 
 #=
-    0: Constant step size                   η = h               with h > 0
-    1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
-    2: Square summable but not summable     η = α / (b + t)     with α > 0 and b ≥ 0
-    3: Nonsummable diminishing              η = α / √t          with α > 0 
-    4: Polyak                               η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
+    Compute
+
+        ∥ λ_t - λ_{t-1} ∥_2 
+        
 =#
-stepsizes = [2]
+function λ_norm(previous_λ, current_λ)
+    
+    res = current_λ .- previous_λ
 
-println("Initializing random disjoint sets")
+    distance = norm(res)
 
-# Indexes to access the different x_i
-const indexes = collect(1:1:n)
+    return distance
+
+end
+
+#=
+    Compute the complementary slackness
+
+        ∑ λ h(x) = - ∑ λ x
+
+=#
+function complementary_slackness(x, λ) 
+
+    complementarity = λ ⋅ (- x)
+
+    println("Complementary slackness is $complementarity")
+
+end
+
+
+#=
+    Compute the optimal γ resulting from the solution of the problem
+    
+        γ = argmin { ∥ γ g^i + (1 - γ) d^{i-1} ∥^2 }
+=#
+function compute_gamma(iteration, n, subgrad, previous_d)
+
+    if iteration == 1
+        
+        γ = ones((n,1))
+    else 
+    
+        γ = ( previous_d.^(2) - subgrad ) ./ ( ( subgrad - previous_d ).^2 )
+    
+    end
+
+    return γ
+
+end
+
+#=
+
+=#
+function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_choice, F, Off_the_shelf_primal, update_rule)
+
+    defl = false
+
+    h = 10 # or rand(), or experimentations
+
+    β = 1 # or rand(), or experimentations
+
+    α = 2 # or rand(), or experimentations
+
+    η = 1
+
+    best_dual = -Inf
+
+    # To create vector b = [λ_{t-1} - q, b]
+    o = ones((K,1))
+
+    o2 = ones((n,1))
+    
+    num_iterations = Vector{Float64}() # num_iterations
+    dual_values = Vector{Float64}() # dual_values
+    λ_distances = Vector{Float64}() # λ_distances
+    x_distances = Vector{Float64}() # x_distances
+    timings = Vector{Float64}() # timings
+    gaps = Vector{Float64}() # gaps
+    grads = Array{Float64}(undef, n, 0) # grads 
+    G_t = zeros((n,1)) # G_t 
+    s_t = zeros((n,1)) # s_t
+    H_t = δ .* ones((n,1)) # H_t allocation
+    d_i = zeros((n,1))
+    
+    # Log result of each iteration
+    print("iter\t\ttime\t\tϕ(λ)\t\t∥x_t - x'∥\t∥λ_t-λ'∥\tf(x*)-ϕ(λ)\t\t∥g∥\t\tη\n\n")
+
+    # Prepare a dataframe to store the values
+    df = DataFrame( Iteration = Int[],
+                    Time = Float64[],
+                    DualValue = Float64[],
+                    x_norm_residual = Float64[],
+                    λ_norm_residual = Any[],
+                    Dual_gap = Any[],
+                    ∇g_norm = Any[],
+                    η = Any[] )
+
+    # Set the first optimal values
+    iteration = 0
+
+    ϕ_λ = dual_function(Q, q, x, λ)
+
+    current_gap = Off_the_shelf_primal - ϕ_λ
+
+    if current_gap > 0 && ϕ_λ > best_dual
+        best_dual = ϕ_λ
+        best_iteration = 0
+        best_x = x
+        best_λ = λ
+    end
+
+    @printf "%d\t\t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \t%.8f \n" iteration 0.00000000 ϕ_λ norm(x) norm(λ) current_gap 0.000000000 η
+
+    while iteration < max_iter
+
+        try
+
+            # Set starting time
+            starting_time = time()
+
+            # Increment iteration
+            iteration += 1
+
+            # Save iteration
+            push!(num_iterations, iteration)
+
+            # Assign previous_λ
+            previous_λ = λ
+
+            # Assign previous_x
+            previous_x = x
+
+            # diff = map(-, λ, q)
+            diff = λ - q
+
+            b = [diff ; o]
+
+            #= 
+                Solve linear system efficiently using \ of Julia: will automatically use techniques like 
+                backward and forward substitution to optimize the computation    
+            =# 
+            x_μ = F \ b
+
+            x, μ = x_μ[1:n], x_μ[n+1 : n + K]
+
+            # Compute subgradient of ϕ (check report for derivation)
+            subgrad = get_subgrad(Q, q, x, λ)
+
+            if any( isnan, subgrad )
+                println("Subgrad is nan!")
+            end
+
+            if defl
+
+                if iteration == 1
+                    d_i = subgrad
+                else 
+                    previous_d = isempty(grads) ? subgrad : d_i
+
+                    γ = compute_gamma(iteration, n, subgrad, previous_d)
+
+                    d_i = (γ .* subgrad) .+ ((o2 - γ) .* previous_d)
+                end
+
+            end
+
+            # Store subgradient in matrix
+            grads = [grads subgrad]
+
+            # Modify η in the proper way
+            if stepsize_choice == 0
+                η = h
+            elseif stepsize_choice == 1
+                η = h / norm( grads[:, end] )
+            elseif stepsize_choice == 2
+                η = α / (β + iteration)
+            elseif stepsize_choice == 3
+                η = α / sqrt(iteration)
+            else 
+                η = isempty(dual_values) ? 1 : ( (Off_the_shelf_primal - dual_values[end]) / norm(grads[:,end])^2 )
+            end
+            
+            #= 
+                Solution of dual_function of problem 2.4 (see report)
+                Accumulate the squared summation into s_t structure
+            =#
+            s_t += subgrad.^2
+
+            if any( isnan, s_t )
+                println("s_t is nan!")
+            end
+
+            ϕ_λ = dual_function(Q, q, x, λ)
+
+            #=
+                Update rule 1
+            =#
+            # G_t .+= (subgrad .* subgrad)
+
+            # λ = defl ? λ + η * ( d_i ./ map(sqrt, G_t) ) : λ + η * ( subgrad ./ map(sqrt, G_t) )   
+
+            #=
+                Update rule 2
+            =#  
+            # avg = sum(grads, dims=2) ./ iteration 
+
+            # λ = - η * iteration * ( avg ./ ( H_t + sqrt.(s_t) ) )
+            
+
+            #=
+                Update rule 3
+            =#  
+            # λ = λ - η * ( subgrad ./ ( H_t + sqrt.(s_t) ) )
+
+
+            #=
+                Update rule 4
+            =#
+            λ = λ + (η * subgrad)
+
+
+            # Projection over nonnegative orthant
+            λ = max.(0, λ)
+
+
+            # Check for NaN values
+            if any( isnan, λ )
+                println("λ is nan!")
+                break
+            elseif any( isnan, x )
+                println("x is nan!")
+                break
+            elseif isnan( ϕ_λ ) 
+                println("ϕ_λ is nan!")
+                break
+            end 
+
+            # Storing current relaxation value
+            push!(dual_values, ϕ_λ)
+
+            # Compute \| x_t - x_{t-1} \|_2 and save it
+            push!(x_distances, x_norm(previous_x, x))
+
+            # Compute current dual_gap
+            current_gap = Off_the_shelf_primal - dual_values[end]
+
+            if isnan( current_gap )
+                println("Some NaN values detected")
+                break
+            end
+
+            # Update the best solution if conditions are met
+            if ϕ_λ > best_dual && current_gap > 0
+                best_dual = ϕ_λ
+                best_iteration = iteration
+                best_x .= x
+                best_λ .= λ
+            end
+
+            # if current_gap < -1
+            #     println("Gap is negative!")
+            #     last_x = x
+            #     last_λ = λ
+            #     break
+            # end
+
+            # Store the current gap
+            push!(gaps, current_gap)
+
+            push!(λ_distances, λ_norm(previous_λ, λ))
+
+            # Store timing result of this iteration
+            finish_time = time()    
+
+            # Compute timing needed for this iteration
+            time_step = finish_time - starting_time
+                
+            # Save time step
+            push!(timings, time_step)
+
+            g_norm = norm(subgrad)
+
+            # Reached optimal gap values
+            if current_gap > 0 && current_gap <= τ
+                println("Found optimal dual gap")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \t%1.5e \t%1.5e \n" iteration timings[end] dual_values[end] x_distances[end] λ_distances[end] current_gap g_norm η
+                push!(df, [iteration, timings[end], dual_values[end], x_distances[end], λ_distances[end], current_gap, g_norm, η])
+                break   
+            end
+
+            # λ is not changing anymore
+            if λ_distances[end] < ε && iteration > 10
+                println("λ not changing anymore")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \t%1.5e \t%1.5e \n" iteration timings[end] dual_values[end] x_distances[end] λ_distances[end] current_gap g_norm η
+                push!(df, [iteration, timings[end], dual_values[end], x_distances[end], λ_distances[end], current_gap, g_norm, η])
+                break   
+            end
+
+            # The gradient vanished
+            if norm(subgrad) < ε
+                println("Subgradient is zero")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%s \t%1.5e \t%1.5e \n" iteration timings[end] dual_values[end] x_distances[end] λ_distances[end] current_gap g_norm η
+                push!(df, [iteration, timings[end], dual_values[end], x_distances[end], λ_distances[end], current_gap, g_norm, η])
+                break   
+            end
+
+            # Log result of the current iteration
+            @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" iteration timings[end] dual_values[end] x_distances[end] λ_distances[end] current_gap g_norm η
+
+            # Add to DataFrame to save results
+            push!(df, [iteration, timings[end], dual_values[end], x_distances[end], λ_distances[end], current_gap, g_norm, η])
+
+        catch y
+
+            if isa(y, InterruptException)
+
+                complementary_slackness(best_x, best_λ)
+
+                # Log total time and iterations
+                print("\n")
+                print("Iterations: $(iteration)\tTotal time: $(round(sum(timings), digits=6))\n")
+
+                # Save results in CSV file
+                CSV.write("logs/results_n=$(n)_K=$(K)_update=$(update_rule)_alpha=$(α)_step=$(stepsize_choice).csv", df)
+
+                break
+
+            else
+
+                continue
+            
+            end
+            
+
+        end
+
+    end
+
+    complementary_slackness(best_x, best_λ)
+
+    # Log total time and iterations
+    print("\n")
+    print("Iterations: $(iteration)\tTotal time: $(round(sum(timings), digits=6))\n")
+
+    # Save results in CSV file
+    CSV.write("logs/results_n=$(n)_K=$(K)_update=$(update_rule)_alpha=$(α)_step=$(stepsize_choice).csv", df)
+
+
+    #------------------------------------------------------#
+    #------------     Results for rules     ---------------#
+    #------------------------------------------------------#
+
+    print("\n\n\n\n")
+    print("------------------- Rule $(update_rule) results -------------------\n\n")
+
+    println("Optimal x found (rule $(update_rule)):")
+    display(best_x)
+    print("\n")
+
+    println("Optimal λ found (rule $(update_rule)):")
+    display(best_λ)
+    print("\n")
+
+    println("Best value of dual function at iteration $(best_iteration) (rule $(update_rule)):")
+    display(best_dual)
+    print("\n")
+
+    println("Duality gap between f( x* ) and ϕ( λ ) (rule $(update_rule)):")
+
+    dual_gap = Off_the_shelf_primal - best_dual
+
+    display(dual_gap)
+    print("\n")
+
+end
+
 
 # Utility function to create the different sets I^k given the number of sets K
 function initialize_sets(indexes, K, n)
@@ -149,148 +508,203 @@ function initialize_sets(indexes, K, n)
     return I
 end
 
-# I_K contains all the I^k required to create the simplices constraints
-I_K = y == "y" ? vars["I"] : initialize_sets(indexes, K, n)
 
-# Fix I_K structure
-I_K = vec(I_K)
-
-for i=1:1:length(I_K)
-    if (typeof(I_K[i]) == Float64) || (typeof(I_K[i]) == Int64) 
-        I_K[i] = [I_K[i]]
-    end
-
-    map(y -> round.(Int, y) , I_K[i])
+# Helper function to construct the matrix A
+# See Algorithm 2 of the report
+function construct_A(K, n, I_K)
+    A = Array{Int64}(undef, K, n)
+    for k in 1:K
+        a_k = zeros(Int64, n)
+        for i in 1:n
+            if i in I_K[k]
+                a_k[i] = 1
+            end 
+        end
+        A[k,:] = a_k
+    end 
+    return A
 end
 
 
-println("Set of I_K arrays:")
-display(I_K)
-print("\n")
+function initialize() 
 
-# Initialize λ iterates to ones
-λ = ones((n,1))
+    #------------------------------------------------------#
+    #---------     Initialize all parameters    -----------#
+    #------------------------------------------------------#
+    print("Use stored .mat?[y/n] ")
+    y = readline()
 
-# Initialize μ iterates to zeros
-μ = zeros((K,1))
+    vars = y == "y" ? matread("mat/structs_n1000_K20.mat") : []
 
-# Create random matrix A_help
-A_help = rand(Float64, n, n)
+    print("Input n value: ")
+    n = y == "y" ? length(vars["q"]) : parse(Int64, readline())
 
-Q = y == "y" ? vars["Q"] : A_help' * A_help
+    print("Enter K value for n=$(n): ")
+    K = y == "y" ? size(vars["A"],1) : parse(Int64, readline())
 
-println("Q matrix:")
-display(Q)
-print("\n")
+    #=
+        0: Constant step size                   η = h               with h > 0
+        1: Constant step length                 η = h / ∥ g_k ∥_2   with h = ∥ λ_{t+1} - λ_t ∥_2 
+        2: Square summable but not summable     η = α / (b + t)     with α > 0 and b ≥ 0
+        3: Nonsummable diminishing              η = α / √t          with α > 0 
+        4: Polyak                               η = f(x*) - ϕ(λ_t) / ∥ g_k ∥^2
+    =#
+    stepsize_choice = 0
 
-# Initialize also random q vector 
-q = y == "y" ? vars["q"] : rand(Float64, (n,1))
+    println("Initializing random disjoint sets")
 
-println("q vector:")
-display(q)
-print("\n")
+    # Indexes to access the different x_i
+    indexes = collect(1:1:n)
 
-# Initialize η
-const η = 1
+    # I_K contains all the I^k required to create the simplices constraints
+    I_K = y == "y" ? vars["I"] : initialize_sets(indexes, K, n)
 
-# Initialize δ
-δ = 1e-16 # or abs(rand())
+    # Fix I_K structure
+    I_K = vec(I_K)
 
-# Initialize max_iter
-const max_iter = 10000
+    for i=1:1:length(I_K)
+        if (typeof(I_K[i]) == Float64) || (typeof(I_K[i]) == Int64) 
+            I_K[i] = [I_K[i]]
+        end
 
-# Initialize ε
-const ε = 1e-14
+        map(y -> round.(Int, y) , I_K[i])
+    end
 
-# Initialize τ
-const τ = 1e-7
 
-A = y == "y" ? vars["A"] : Utils.construct_A(K, n, I_K)
-# A = y == "y" ? vars["A"] : construct_A(K, n, I_K)
+    println("Set of I_K arrays:")
+    display(I_K)
+    print("\n")
 
-println("A constraint matrix:")
-display(A)
-print("\n")
+    # Initialize λ iterates to ones
+    λ = ones((n,1))
 
-Full_mat = Utils.construct_full_matrix(Q, A, K)
+    # Create random matrix A_help
+    A_help = rand(Float64, n, n)
 
-println("Full matrix:")
-display(Full_mat)
-print("\n")
+    Q = y == "y" ? vars["Q"] : A_help' * A_help
 
-#=
-    Let Julia automatically determine the best factorization:
+    eigsQ=eigvals(Q)
+    println("Q is a positive definite matrix with max eigenvalue ", maximum(eigsQ), "and minimumeigen value ", minimum(eigsQ))
+
+    println("Q matrix:")
+    display(Q)
+    print("\n")
+
+    # Initialize also random q vector 
+    q = y == "y" ? vars["q"] : rand(Float64, (n,1))
+
+    println("q vector:")
+    display(q)
+    print("\n")
+
+    # Initialize δ
+    δ = 1 # or abs(rand())
+
+    # Initialize max_iter
+    max_iter = 100000
+
+    # Initialize ε
+    ε = 1e-14
+
+    # Initialize τ
+    τ = 1e-7
+
+    A = y == "y" ? vars["A"] : construct_A(K, n, I_K)
+    # A = y == "y" ? vars["A"] : construct_A(K, n, I_K)
+
+    println("A constraint matrix:")
+    display(A)
+    print("\n")
+
+    Full_mat = vcat(2*Q, A)
         
-        Cholesky ( if Full_mat ≻ 0 )
-        Bunch-Kaufman ( if Q=Q^T )
-        pivoted LU ( otherwise )
-=#
-F = lu!(Full_mat)
+    zero_mat = zeros((K, K))
 
-println("Factorization:")
-display(F)
-print("\n")
+    Right_side = vcat(A', zero_mat)
 
-GC.gc()
+    Full_mat = hcat(Full_mat, Right_side)
 
-x = (F \ vcat(λ - q, ones((K,1))))[1:n]
+    println("Full matrix:")
+    display(Full_mat)
+    print("\n")
 
-println("Starting x:")
-display(x)
-print("\n")
+    #=
+        Let Julia automatically determine the best factorization:
+            
+            Cholesky ( if Full_mat ≻ 0 )
+            Bunch-Kaufman ( if Q=Q^T )
+            pivoted LU ( otherwise )
+    =#
+    F = factorize(Full_mat)
 
-println("Starting λs:")
-display(λ)
-print("\n")
+    println("Factorization:")
+    display(F)
+    print("\n")
 
-matwrite("mat/structs_n$(n)_K$(K).mat", Dict(
-    "Q" => Q,
-    "A" => A,
-    "q" => q,
-    "I" => I_K
-);compress = true) 
+    x_μ = F \ vcat(λ - q, ones((K,1))) 
+
+    x, μ = x_μ[1:n], x_μ[n+1 : n + K]
+
+    println("Starting x:")
+    display(x)
+    print("\n")
+
+    println("Starting λs:")
+    display(λ)
+    print("\n")
+
+    # Optimal value for structs_n100_K10
+    # opt_val = 2.144799092996162e+03
+    # time 1.091 seconds 
+    # iterations 21
+    
+    # Optimal value for structs_n1000_K20
+    opt_val = 9.260942226793662e+04
+    # time 1.091 seconds 
+    # iterations 21
+
+    # Optimal value for structs_n1000_K100
+    # opt_val = 2.365974236431491e+06
+    # time 1.242 seconds
+    # iterations 17 
+
+    # Optimal value for structs_n1000_K500
+    # opt_val = 6.158714971181200e+07
+    # time 0.938 seconds
+    # iterations 17
+
+    # Optimal value for structs_n5000_K10
+    # opt_val = 1.202577688949518e+05
+    # time 41.414 seconds
+    # iterations 23
+
+    # Optimal value for structs_n5000_K1000
+    # opt_val = 1.228530174591432e+09
+    # time 76.352 seconds
+    # iterations 26
+
+    # Optimal value for structs_n5000_K2500
+    # opt_val = 7.759039617014161e+09
+    # time 69.911 seconds
+    # iterations 28
+
+    # Optimal value for structs_n10000_K10
+    # opt_val = 2.428012021226884e+05
+    # time 401.688 seconds
+    # iterations 28
+
+    # Optimal value for structs_n10000_K2500
+    # opt_val = 1.544997631806922e+10
+    # time 971.025 seconds
+    # iterations 34
+
+    # Modify last parameter for update rule
+    my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, 
+                ε, τ, stepsize_choice, F, opt_val, 1)
 
 
-# Optimal value for structs_n1000_K20
-opt_val = 9.260942226793662e+04
-# time 1.091 seconds 
-# iterations 21
-
-# Optimal value for structs_n1000_K100
-# opt_val = 2.365974236431491e+06
-# time 1.242 seconds
-# iterations 17 
-
-# Optimal value for structs_n1000_K500
-# opt_val = 6.158714971181200e+07
-# time 0.938 seconds
-# iterations 17
-
-# Optimal value for structs_n5000_K10
-# opt_val = 1.202577688949518e+05
-# time 41.414 seconds
-# iterations 23
-
-# Optimal value for structs_n5000_K1000
-# opt_val = 1.228530174591432e+09
-# time 76.352 seconds
-# iterations 26
-
-# Optimal value for structs_n5000_K2500
-# opt_val = 7.759039617014161e+09
-# time 69.911 seconds
-# iterations 28
-
-# Optimal value for structs_n10000_K10
-# opt_val = 2.428012021226884e+05
-# time 401.688 seconds
-# iterations 28
-
-# Optimal value for structs_n10000_K2500
-# opt_val = 1.544997631806922e+10
-# time 971.025 seconds
-# iterations 34
+end
 
 
-testing(n, K, Q, q, λ, μ, x, I_K, η, δ, 
-        max_iter, ε, τ, stepsizes, F, A, opt_val)
+
+initialize()

@@ -1,6 +1,5 @@
 using LinearAlgebra
 using Random
-using MAT
 using Printf
 using DataFrames
 using CSV
@@ -121,51 +120,31 @@ using MathProgBase
         ∑ λ h(x) = - ∑ λ x
 
 =#
-function complementary_slackness(x, λ) 
+# function complementary_slackness(x, λ) 
 
-    complementarity = λ ⋅ (- x)
+#     complementarity = λ ⋅ (- x)
 
-    println("Complementary slackness is $complementarity")
+#     println("Complementary slackness is $complementarity")
 
-end
+# end
 
-
-#=
-    Compute the optimal γ resulting from the solution of the problem
-    
-        γ = argmin { ∥ γ g^i + (1 - γ) d^{i-1} ∥^2 }
-=#
-function compute_gamma(iteration, n, subgrad, previous_d)
-
-    if iteration == 1
-        
-        γ = ones((n,1))
-    else 
-    
-        γ = ( previous_d.^(2) - subgrad ) ./ ( ( subgrad - previous_d ).^2 )
-    
-    end
-
-    return γ
-
-end
 
 #=
 
 =#
-function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_choice, F, Off_the_shelf_primal, update_rule)
+function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_choice, F, Off_the_shelf_primal, α, β, h, rule)
 
-    defl = false
+    defl = true
 
-    h = 1e-2 # or rand(), or experimentations
+    h = h # or rand(), or experimentations
 
-    β = 0 # or rand(), or experimentations
+    β = β # or rand(), or experimentations
 
-    α = 0.8 # or rand(), or experimentations
+    α = α # or rand(), or experimentations
 
     η = 1
 
-    ϵ = 1e-2
+    ϵ = 1e-10
 
     best_dual = -Inf
 
@@ -174,13 +153,7 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
 
     o2 = ones((n,1))
     
-    # num_iterations = Vector{Float64}() # num_iterations
-    # dual_values = Vector{Float64}() # dual_values
-    # λ_distances = Vector{Float64}() # λ_distances
-    # x_distances = Vector{Float64}() # x_distances
-    # timings = Vector{Float64}() # timings
-    # gaps = Vector{Float64}() # gaps
-    grads = Array{Float64}(undef, n, 0) # grads 
+    avg = zeros((n,1)) # avg
     G_t = zeros((n,1)) # G_t 
     s_t = zeros((n,1)) # s_t
     H_t = δ .* ones((n,1)) # H_t allocation
@@ -214,6 +187,8 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
         best_x = x
         best_λ = λ
     end
+
+    times = 0
 
     @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" iteration 0.00000000 ϕ_λ norm(x) norm(λ) current_gap 0.000000000 η
 
@@ -264,7 +239,7 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
             # # If norm(a-b) ≈ 0, then the gradient exist
             # difference = norm(a-b)
 
-            # if difference <= 1e-12
+            # if difference ≤ 1e-6
             #     # The gradient exists and coincide with the normal derivation of ϕ(λ_{t-1})
             #     subgrad = - x
             # else
@@ -277,7 +252,6 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
             #         subgrad = - b
             #     end
             # end
-            # subgrad = get_subgrad(Q, q, x, λ)
             subgrad = -x
 
             if any( isnan, subgrad )
@@ -289,17 +263,15 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
                 if iteration == 1
                     d_i = subgrad
                 else 
-                    previous_d = isempty(grads) ? subgrad : d_i
+                    previous_d = iteration == 1 ? subgrad : d_i
 
-                    γ = compute_gamma(iteration, n, subgrad, previous_d)
-
-                    d_i = (γ .* subgrad) .+ ((o2 - γ) .* previous_d)
+                    # γ = ( d_i .* ( d_i .- subgrad ) ) ./ ( subgrad .- d_i ).^2
+                    γ = 0.5 .* ones((n,1))
+ 
+                    d_i = (γ .* subgrad) .+ ((o2 .- γ) .* previous_d)
                 end
 
             end
-
-            # Store subgradient in matrix
-            grads = [grads subgrad]
 
             # Modify η in the proper way
             if stepsize_choice == 0
@@ -311,14 +283,16 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
             elseif stepsize_choice == 3
                 η = α / sqrt(iteration)
             else 
-                η = 1.9 * (Off_the_shelf_primal - ϕ_λ) / (norm(subgrad)^2) 
+                η = 1.99 * (Off_the_shelf_primal - ϕ_λ) / (norm(subgrad)^2) 
             end
             
             #= 
                 Solution of dual_function of problem 2.4 (see report)
                 Accumulate the squared summation into s_t structure
             =#
-            s_t += subgrad.^2
+            s_t .+= subgrad.^2
+
+            avg .+= subgrad
 
             if any( isnan, s_t )
                 println("s_t is nan!")
@@ -326,32 +300,29 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
 
             ϕ_λ = (dot(x, Q * x) + dot(q, x) - dot(λ, x))[1]
 
-            #=
-                Update rule 1
-            =#
-            G_t .+= (subgrad .* subgrad)
+            if rule == 1
+                #=
+                    Update rule 1
+                =#
+                G_t .+= (subgrad .* subgrad)
 
-            λ = defl ? λ + η * ( d_i ./ map(sqrt, G_t) ) : λ .+ η .* ( subgrad ./ sqrt.(G_t) )   
-
-            #=
-                Update rule 2
-            =#  
-            # avg = sum(grads, dims=2) ./ iteration 
-
-            # λ = - η * iteration * ( avg ./ ( H_t .+ sqrt.(s_t) ) )
-            
-
-            #=
-                Update rule 3
-            =#  
-            # λ = λ .+ η .* ( subgrad ./ ( H_t .+ sqrt.(s_t) ) )
-
-
-            #=
-                Update rule 4
-            =#
-            # λ = defl ? λ .+ (η .* d_i) : λ .+ (η .* subgrad)
-
+                λ = defl ? λ + η * ( d_i ./ (sqrt.(G_t)) ) : λ .+ η .* ( subgrad ./ (sqrt.(G_t)) )   
+            elseif rule == 2
+                #=
+                    Update rule 2
+                =#  
+                λ = η * iteration * ( (avg ./ iteration) ./ ( H_t .+ sqrt.(s_t) ) )
+            elseif rule == 3
+                #=
+                    Update rule 3
+                =#  
+                λ = defl ? λ + η .* ( d_i ./ ( H_t .+ sqrt.(s_t) ) ) : λ + η .* ( subgrad ./ ( H_t .+ sqrt.(s_t) ) )
+            else
+                #=
+                    Update rule 4
+                =#
+                λ = defl ? λ + (η .* d_i) : λ + (η .* subgrad)
+            end
 
             # Projection over nonnegative orthant
             λ = max.(0, λ)
@@ -401,8 +372,18 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
 
             g_norm = norm(subgrad)
 
+            complementarity = dot(λ, - x)
+
+            if complementarity ≤ ϵ && complementarity > 0
+                println("Saddle point reached")
+                # Log result of the current iteration
+                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" iteration time_step ϕ_λ x_distance λ_distance current_gap g_norm η
+                push!(df, [iteration, time_step, ϕ_λ, x_distance, λ_distance, current_gap, g_norm, η])
+                break   
+            end
+
             # Reached optimal gap values
-            if current_gap > 0 && current_gap <= τ
+            if current_gap > 0 && current_gap ≤ τ
                 println("Found optimal dual gap")
                 # Log result of the current iteration
                 @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" iteration time_step ϕ_λ x_distance λ_distance current_gap g_norm η
@@ -412,11 +393,15 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
 
             # λ is not changing anymore
             if λ_distance < ε && iteration > 10
-                println("λ not changing anymore")
-                # Log result of the current iteration
-                @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" iteration time_step ϕ_λ x_distance λ_distance current_gap g_norm η
-                push!(df, [iteration, time_step, ϕ_λ, x_distance, λ_distance, current_gap, g_norm, η])
-                break   
+                if times == 100
+                    println("λ not changing anymore")
+                    # Log result of the current iteration
+                    @printf "%d\t\t%.8f \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \t%1.5e \n" iteration time_step ϕ_λ x_distance λ_distance current_gap g_norm η
+                    push!(df, [iteration, time_step, ϕ_λ, x_distance, λ_distance, current_gap, g_norm, η])
+                    break
+                else 
+                    times += 1
+                end  
             end
 
             # The gradient vanished
@@ -438,14 +423,16 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
 
             if isa(y, InterruptException)
 
-                complementary_slackness(best_x, best_λ)
+                complementarity = dot(best_λ, - best_x)
+
+                println("Complementary slackness is $complementarity")
 
                 # Log total time and iterations
                 print("\n")
                 print("Iterations: $(iteration)\tTotal time: $(round(total_time, digits=6))\n")
 
                 # Save results in CSV file
-                CSV.write("logs/results_n=$(n)_K=$(K)_update=$(update_rule)_alpha=$(α)_step=$(stepsize_choice).csv", df)
+                CSV.write("logs/results_n=$(n)_K=$(K)_update=$(rule)_alpha=$(α)_step=$(stepsize_choice).csv", df)
 
                 break
 
@@ -460,14 +447,16 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
 
     end
 
-    complementary_slackness(best_x, best_λ)
+    complementarity = dot(best_λ, - best_x)
+
+    println("Complementary slackness is $complementarity")
 
     # Log total time and iterations
     print("\n")
     print("Iterations: $(iteration)\tTotal time: $(round(total_time, digits=6))\n")
 
     # Save results in CSV file
-    CSV.write("logs/results_n=$(n)_K=$(K)_update=$(update_rule)_alpha=$(α)_step=$(stepsize_choice).csv", df)
+    CSV.write("logs/results_n=$(n)_K=$(K)_update=$(rule)_alpha=$(α)_step=$(stepsize_choice).csv", df)
 
 
     #------------------------------------------------------#
@@ -475,21 +464,21 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
     #------------------------------------------------------#
 
     print("\n\n\n\n")
-    print("------------------- Rule $(update_rule) results -------------------\n\n")
+    print("------------------- Rule $(rule) results -------------------\n\n")
 
-    println("Optimal x found (rule $(update_rule)):")
+    println("Optimal x found (rule $(rule)):")
     display(best_x)
     print("\n")
 
-    println("Optimal λ found (rule $(update_rule)):")
+    println("Optimal λ found (rule $(rule)):")
     display(best_λ)
     print("\n")
 
-    println("Best value of dual function at iteration $(best_iteration) (rule $(update_rule)):")
+    println("Best value of dual function at iteration $(best_iteration) (rule $(rule)):")
     display(best_dual)
     print("\n")
 
-    println("Duality gap between f( x* ) and ϕ( λ ) (rule $(update_rule)):")
+    println("Duality gap between f( x* ) and ϕ( λ ) (rule $(rule)):")
 
     dual_gap = (Off_the_shelf_primal - best_dual) / abs(Off_the_shelf_primal)
 
@@ -499,55 +488,7 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
 end
 
 
-# # Utility function to create the different sets I^k given the number of sets K
-# function initialize_sets(indexes, K, n)
-#     # Put at least one element in each set I^k
-#     instances = ones(Int64, K)
-#     # Distribute the remaining values randomly inside instances
-#     remaining = n - K
-#     while remaining > 0
-#         Random.seed!(abs(rand(Int,1)[1]))
-#         random_index = rand(1:K)
-#         instances[random_index] += 1
-#         remaining -= 1
-#     end
-#     # Create empty multinensional Array
-#     I = Vector{Array{Int64,1}}()
-#     # Iterate through the required cardinality of each index set
-#     for value in instances
-#         tmp = value
-#         values = []        
-#         # Shuffle each time the index array and put the value inside the current set I^k
-#         while tmp > 0
-#             shuffle!(indexes)
-#             push!(values, pop!(indexes)) 
-#             tmp -= 1
-#         end
-#         # Add the current I^k to I
-#         push!(I, values)
-#     end
-#     return I
-# end
-
-
-# # Helper function to construct the matrix A
-# # See Algorithm 2 of the report
-# function construct_A(K, n, I_K)
-#     A = Array{Int64}(undef, K, n)
-#     for k in 1:K
-#         a_k = zeros(Int64, n)
-#         for i in 1:n
-#             if i in I_K[k]
-#                 a_k[i] = 1
-#             end 
-#         end
-#         A[k,:] = a_k
-#     end 
-#     return A
-# end
-
-
-function initialize() 
+function initialize(step, rule, α, β, δ, h, max_iter) 
 
     #------------------------------------------------------#
     #---------     Initialize all parameters    -----------#
@@ -565,7 +506,7 @@ function initialize()
         3: Nonsummable diminishing              η = α / √t                          with α > 0 
         4: Polyak                               η = β * f(x*) - ϕ(λ_t) / ∥ g_k ∥^2  with β ∈ (0,2)
     =#
-    stepsize_choice = 4
+    stepsize_choice = step
 
     println("Initializing random disjoint sets")
 
@@ -628,10 +569,10 @@ function initialize()
     print("\n")
 
     # Initialize δ
-    δ = 1 # or abs(rand())
+    δ = δ # or abs(rand())
 
     # Initialize max_iter
-    max_iter = 100000
+    max_iter = max_iter
 
     # Initialize ε
     ε = 1e-14
@@ -705,60 +646,15 @@ function initialize()
 
     opt_val = sol.objval
 
-    # Optimal value for structs_n100_K10
-    # opt_val = 2.144799092996162e+03
-    # time 1.091 seconds 
-    # iterations 21
-    
-    # Optimal value for structs_n1000_K20
-    # opt_val = 9.260942226793662e+04
-    # time 1.091 seconds 
-    # iterations 21
-
-    # Optimal value for structs_n1000_K100
-    # opt_val = 2.365974236431491e+06
-    # time 1.242 seconds
-    # iterations 17 
-
-    # Optimal value for structs_n1000_K500
-    # opt_val = 6.158714971181200e+07
-    # time 0.938 seconds
-    # iterations 17
-
-    # Optimal value for structs_n5000_K10
-    # opt_val = 1.202577688949518e+05
-    # time 41.414 seconds
-    # iterations 23
-
-    # Optimal value for structs_n5000_K1000
-    # opt_val = 1.228530174591432e+09
-    # time 76.352 seconds
-    # iterations 26
-
-    # Optimal value for structs_n5000_K2500
-    # opt_val = 7.759039617014161e+09
-    # time 69.911 seconds
-    # iterations 28
-
-    # Optimal value for structs_n10000_K10
-    # opt_val = 2.428012021226884e+05
-    # time 401.688 seconds
-    # iterations 28
-
-    # Optimal value for structs_n10000_K2500
-    # opt_val = 1.544997631806922e+10
-    # time 971.025 seconds
-    # iterations 34
-
     GC.gc()
 
     # Modify last parameter for update rule
     @time my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, 
-                ε, τ, stepsize_choice, F, opt_val, 1)
-
+                ε, τ, stepsize_choice, F, opt_val, α, 
+                β, h, rule)
 
 end
 
 
-
-initialize()
+# Modify steps
+# initialize(0, 3, 0.1, 0, 1e1, 1e1, 10000) #= steprule, rule, α, β, δ, h, max_iter =#

@@ -225,34 +225,34 @@ function my_ADAGRAD(n, K, Q, q, A, λ, μ, x, δ, max_iter, ε, τ, stepsize_cho
             x, μ = x_μ[1:n], x_μ[n+1 : n + K]
 
             # # Compute subgradient of ϕ (check report for derivation)
-            # λ_minus = λ .- ϵ
-            # λ_plus = λ .+ ϵ
+            λ_minus = λ .- ϵ
+            λ_plus = λ .+ ϵ
 
-            # # Compute the value of a
-            # a = (dot(x, Q * x) + dot(q, x) - dot(λ_minus, x))[1] - (dot(x, Q * x) + dot(q, x) - dot(λ, x))[1] #dual_function(Q, q, x, λ) - dual_function(Q, q, x, λ)
-            # a = a ./ (λ_minus .- λ)
+            # Compute the value of a
+            a = (dot(x, Q * x) + dot(q, x) - dot(λ_minus, x))[1] - (dot(x, Q * x) + dot(q, x) - dot(λ, x))[1] #dual_function(Q, q, x, λ) - dual_function(Q, q, x, λ)
+            a = a ./ (λ_minus .- λ)
 
-            # # Compute value of b
-            # b = (dot(x, Q * x) + dot(q, x) - dot(λ_plus, x))[1] - (dot(x, Q * x) + dot(q, x) - dot(λ, x))[1] #dual_function(Q, q, x, λ) - dual_function(Q, q, x, λ)
-            # b = b ./ (λ_plus .- λ)
+            # Compute value of b
+            b = (dot(x, Q * x) + dot(q, x) - dot(λ_plus, x))[1] - (dot(x, Q * x) + dot(q, x) - dot(λ, x))[1] #dual_function(Q, q, x, λ) - dual_function(Q, q, x, λ)
+            b = b ./ (λ_plus .- λ)
 
-            # # If norm(a-b) ≈ 0, then the gradient exist
-            # difference = norm(a-b)
+            # If norm(a-b) ≈ 0, then the gradient exist
+            difference = norm(a-b)
 
-            # if difference ≤ 1e-6
-            #     # The gradient exists and coincide with the normal derivation of ϕ(λ_{t-1})
-            #     subgrad = - x
-            # else
-            #     a_norm = norm(a)
-            #     b_norm = norm(b)
-            #     min_norm = min(a_norm, b_norm)
-            #     if min_norm == a_norm
-            #         subgrad = - a
-            #     else 
-            #         subgrad = - b
-            #     end
-            # end
-            subgrad = -x
+            if difference ≤ 1e-6
+                # The gradient exists and coincide with the normal derivation of ϕ(λ_{t-1})
+                subgrad = - x
+            else
+                a_norm = norm(a)
+                b_norm = norm(b)
+                min_norm = min(a_norm, b_norm)
+                if min_norm == a_norm
+                    subgrad = - a
+                else 
+                    subgrad = - b
+                end
+            end
+            # subgrad = -x
 
             if any( isnan, subgrad )
                 println("Subgrad is nan!")

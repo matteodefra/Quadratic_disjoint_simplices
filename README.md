@@ -21,7 +21,14 @@ and then update <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\lam
 
 <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\begin{align*}&space;\lambda_t&space;=&space;P_\mathcal{X}&space;\{&space;\lambda_t&space;&plus;&space;\eta&space;diag(G_t)^{-1/2}&space;g_t&space;\}&space;\\[1em]&space;\lambda_t&space;=&space;P_\mathcal{X}&space;\{&space;-H_t^{-1}&space;t\,&space;\eta\,&space;\overline{g}_t&space;\}&space;\\[1em]&space;\lambda_t&space;=&space;P_\mathcal{X}&space;\{&space;\lambda_t&space;-&space;\eta\,&space;H_t^{-1}\,&space;g_t&space;\}&space;\\[1em]&space;\end{align*}" title="\begin{align*} \lambda_t = P_\mathcal{X} \{ \lambda_t + \eta diag(G_t)^{-1/2} g_t \} \\[1em] \lambda_t = P_\mathcal{X} \{ -H_t^{-1} t\, \eta\, \overline{g}_t \} \\[1em] \lambda_t = P_\mathcal{X} \{ \lambda_t - \eta\, H_t^{-1}\, g_t \} \\[1em] \end{align*}" />
 
-where <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;P_\mathcal{X}" title="P_\mathcal{X}" /> is the projection over the non-negative orthant <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\mathcal{X}&space;=&space;\{&space;x&space;\ge&space;0&space;\}" title="\mathcal{X} = \{ x \ge 0 \}" />, <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;g_t" title="g_t" /> is the subgradient, <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;G_t&space;=&space;\sum_{k=1}^t&space;g_k&space;g_k^\intercal" title="G_t = \sum_{k=1}^t g_k g_k^\intercal" /> is the full outer product of the subgradient, <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;H_t" title="H_t" /> is an approximation of the hessian and <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\overline{g}_t" title="\overline{g}_t" /> is the average of the subgradient until <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;t" title="t" /> and <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\eta" title="\eta" /> is the chosen stepsize.
+where <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;P_\mathcal{X}" title="P_\mathcal{X}" /> is the projection over the non-negative orthant with \
+<img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\mathcal{X}&space;=&space;\{&space;x&space;\ge&space;0&space;\}" title="\mathcal{X} = \{ x \ge 0 \}" />  \
+<img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;g_t" title="g_t" /> is the subgradient \
+<img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;G_t&space;=&space;\sum_{k=1}^t&space;g_k&space;g_k^\intercal" title="G_t = \sum_{k=1}^t g_k g_k^\intercal" /> \
+is the full outer product of the subgradient \
+<img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;H_t" title="H_t" /> is an approximation of the hessian \
+<img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\overline{g}_t" title="\overline{g}_t" /> is the average of the subgradient until <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;t" title="t" /> and finally \
+<img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\eta" title="\eta" /> is the chosen stepsize. \
 To check the derived rules and the theoretical analysis, check [report](report/report.pdf)
 
 

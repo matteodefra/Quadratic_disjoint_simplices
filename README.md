@@ -60,3 +60,10 @@ params are the following:
 - <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\delta" title="\delta" />: hyperparameter for rule 2 and 3;
 - h: hyperparameter for stepsize 0 and 1;
 - max_iter: maximum iterations;
+
+
+## Results
+
+Below are two examples of results obtained with _constant length_ and _constant step_ stepsizes, using the different update rules of <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\lambda" title="\lambda" /> on a problem of size <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;n" title="n" /> 5000 and number of constraints <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;K" title="K" /> 2500
+
+![alt-text-1](images/n5000_K2500_step0.png "Step 0") ![alt-text-2](images/n5000_K2500_step1.png "Step 1")
